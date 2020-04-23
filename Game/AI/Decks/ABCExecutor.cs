@@ -6,6 +6,7 @@ using WindBot.Game;
 using WindBot.Game.AI;
 using System.Linq;
 using YGOSharp.Network.Enums;
+using YGOSharp.OCGWrapper;
 
 namespace WindBot.Game.AI.Decks
 {
@@ -67,6 +68,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.PhotonThrasher, PhotonSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.PhotonVanisher, PhotonSummon);
             AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEquip);
+            AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEffect);
             AddExecutor(ExecutorType.Activate, CardId.ReinaforcmentOfTheArmy, ROTAEffect);
             AddExecutor(ExecutorType.Activate, CardId.Terraforming, TerraformingEffect);
             AddExecutor(ExecutorType.Activate, CardId.MalefactorsCommand, MalefactorsCommandEffect);
@@ -89,7 +91,6 @@ namespace WindBot.Game.AI.Decks
 
             AddExecutor(ExecutorType.SpSummon, CardId.UnionCarrier, UnionCarrierSummon);
             AddExecutor(ExecutorType.Activate, CardId.UnionCarrier, UnionCarrierEffect);
-            AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEffect);
             AddExecutor(ExecutorType.Activate, CardId.GalaxySoldier, GalaxySoldierSpSummon);
             AddExecutor(ExecutorType.Activate, CardId.GalaxySoldier, GalaxySoldierEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.CrusadiaAvramax, CrusadiaAvramaxSummon);
@@ -165,7 +166,7 @@ namespace WindBot.Game.AI.Decks
             if (Duel.LastChainPlayer == 0 || ABCBanishUsed)
                 return false;
             ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
-            if (target == null || target.HasType(CardType.Spell) || target.HasType(CardType.Trap) || target.HasType(CardType.QuickPlay))
+            if (target == null || ((target.HasType(CardType.Spell) || target.HasType(CardType.Trap)) && (!target.HasType(CardType.Equip) && !target.HasType(CardType.Continuous) && !target.HasType(CardType.Field))))
                 return false;
             AI.SelectOption(0);
             AI.SelectCard(ABCUnion);
@@ -192,6 +193,8 @@ namespace WindBot.Game.AI.Decks
                     return false;
                 return false;
             }*/
+            if (Duel.LastChainPlayer == 0)
+                return false;
             if (ABCBanishUsed)
             {
                 AI.SelectOption(1);
@@ -332,8 +335,25 @@ namespace WindBot.Game.AI.Decks
             };
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2 && (Bot.HasInMonstersZone(CardId.KnightmareCerberus) || Bot.HasInMonstersZone(CardId.KnightmarePhoenix)))
             {
-                AI.SelectMaterials(materials);
-                return true;
+                List<ClientCard> materials2 = new List<ClientCard>();
+                List<ClientCard> bot_monster = Bot.GetMonsters();
+                bot_monster.Sort(CardContainer.CompareCardLevel);
+                int link_count = 0;
+                foreach (ClientCard card in bot_monster)
+                {
+                    if (card.IsFacedown()) continue;
+                    if (!materials2.Contains(card) && card.LinkCount <= 2 && card.IsCode(materials))
+                    {
+                        materials2.Add(card);
+                        link_count += (card.HasType(CardType.Link)) ? card.LinkCount : 1;
+                        if (link_count >= 3) break;
+                    }
+                }
+                if (link_count >= 3)
+                {
+                    AI.SelectMaterials(materials2);
+                    return true;
+                }
             }
             return false;
         }
@@ -341,6 +361,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool KnightmarePhoenixEffect()
         {
+            int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+            };
             ClientCard target = Util.GetBestEnemySpell();
             if (target == null)
                 return false;
@@ -361,7 +386,12 @@ namespace WindBot.Game.AI.Decks
 
 
         private bool KnightmareCerberusEffect()
-        {
+        {   
+            int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+            };
             ClientCard target = Util.GetBestEnemyMonster(canBeTarget: true);
             if (target == null)
                 return false;
@@ -383,6 +413,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool KnightmareUnicornEffect()
         {
+            int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+            };
             ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
             if (target == null)
                 return false;
@@ -413,6 +448,8 @@ namespace WindBot.Game.AI.Decks
             if (cardData != null)
             {
                 if (cardData.Attack <= 1000)
+                    return CardPosition.FaceUpDefence;
+                if (cardData.HasType(CardType.Union) && Duel.Player == 1)
                     return CardPosition.FaceUpDefence;
             }
             return 0;
@@ -606,8 +643,25 @@ namespace WindBot.Game.AI.Decks
             };
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2)
             {
-                AI.SelectMaterials(materials);
-                return true;
+                List<ClientCard> materials2 = new List<ClientCard>();
+                List<ClientCard> bot_monster = Bot.GetMonsters();
+                bot_monster.Sort(CardContainer.CompareCardLevel);
+                int link_count = 0;
+                foreach (ClientCard card in bot_monster)
+                {
+                    if (card.IsFacedown()) continue;
+                    if (!materials2.Contains(card) && card.LinkCount <= 2 && card.IsCode(materials))
+                    {
+                        materials2.Add(card);
+                        link_count += (card.HasType(CardType.Link)) ? card.LinkCount : 1;
+                        if (link_count >= 4) break;
+                    }
+                }
+                if (link_count >= 4)
+                {
+                    AI.SelectMaterials(materials2);
+                    return true;
+                }
             }
             return false;
         }
