@@ -36,6 +36,7 @@ namespace WindBot.Game.AI.Decks
             public const int SolemnStrike = 40605147;
 
             public const int ABCDragonBuster = 1561110;
+            public const int InvokedMechaba = 75286621;
             public const int CyberDragonInfinity = 10443957;
             public const int CyberDragonNova = 58069384;
             public const int CrystronHalqifibrax = 50588353;
@@ -57,6 +58,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
             AddExecutor(ExecutorType.Activate, CardId.CrossOutDesignator, CrossOutNegate);
             AddExecutor(ExecutorType.Activate, CardId.ApollousaBOG, ApollousaNegate);
+            AddExecutor(ExecutorType.Activate, CardId.InvokedMechaba, CyberDragonInfinityNegate);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityNegate);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityAttach);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonNova, CyberDragonNovaFloat);
@@ -80,6 +82,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Summon, CardId.AAssaultCore, AAssaultCoreSummon);
             AddExecutor(ExecutorType.Summon, CardId.BBusterDrake, BBusterDrakeSummon);
             AddExecutor(ExecutorType.Summon, CardId.CCrushWyvern, CCrushWyvernSummon);
+            AddExecutor(ExecutorType.Summon, CardId.HeavyMechSupportArmor, HMSArmorSummon);
             AddExecutor(ExecutorType.Activate, CardId.AAssaultCore, UnionSpSummon);
             AddExecutor(ExecutorType.Activate, CardId.BBusterDrake, UnionSpSummon);
             AddExecutor(ExecutorType.Activate, CardId.CCrushWyvern, UnionSpSummon);
@@ -101,6 +104,8 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.CCrushWyvern, CCrushWyvernEffect);
             AddExecutor(ExecutorType.Activate, CardId.BBusterDrake, BBusterDrakeEffect);
             AddExecutor(ExecutorType.Activate, CardId.AAssaultCore, AAssaultCoreEffect);
+            AddExecutor(ExecutorType.Activate, CardId.HeavyMechSupportArmor, HMSArmorEffect);
+            AddExecutor(ExecutorType.Activate, CardId.HeavyMechSupportArmor, HMSArmorEquip);
 
             AddExecutor(ExecutorType.SpellSet, CardId.CalledbyTheGrave, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.InfiniteImpermanence, TrapSet);
@@ -117,6 +122,8 @@ namespace WindBot.Game.AI.Decks
         private bool ABCBanishUsed = false;
         private bool ABCUnionSummonUsed = false;
         private bool UnionCarrierSummonTurn = false;
+        private bool NormalSummonUsed = false;
+        private bool HMSNormalUsed = false;
 
         public override bool OnSelectHand()
         {
@@ -134,6 +141,78 @@ namespace WindBot.Game.AI.Decks
             ABCBanishUsed = false;
             ABCUnionSummonUsed = false;
             UnionCarrierSummonTurn = false;
+            NormalSummonUsed = false;
+            HMSNormalUsed = false;
+        }
+
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
+        {
+            int[] extradecksend =
+            {
+                87602890,   //Zaborg, The Mega Monarch
+                95679145,   //Maximus Dragma
+                82734805,   //Infernoid Tierraa
+                86062400,   //XYZ avenger
+                63737050,   //Rye Okami
+
+            };
+            if (Util.GetLastChainCard() != null && Util.GetLastChainCard().IsCode(extradecksend) && Duel.LastChainPlayer != 0)
+            {
+                List<int> list = new List<int>();
+                if (min >= 1)
+                    list.Add(CardId.CyberDragonNova);
+                if (min >= 2)
+                    list.Add(CardId.CyberDragonInfinity);
+                if (min >= 3)
+                {
+                    list.Add(CardId.ABCDragonBuster);
+                    list.Add(CardId.CrusadiaAvramax);
+                    list.Add(CardId.IPMasquerina);
+                    list.Add(CardId.KnightmareCerberus);
+                    list.Add(CardId.KnightmarePhoenix);
+                    list.Add(CardId.KnightmareUnicorn);
+                }
+                int todrop = min;
+                IList<ClientCard> result = new List<ClientCard>();
+                IList<ClientCard> ToRemove = new List<ClientCard>(cards);
+                List<int> record = new List<int>();
+                foreach (ClientCard card in ToRemove)
+                {
+                    if (card?.Id != 0 && card.IsCode(list) && (!record.Contains(card.Id)))
+                    {
+                        record.Add(card.Id);
+                        result.Add(card);
+                        if (--todrop <= 0) break;
+                    }
+                }
+                if (todrop <= 0) return result;
+            }
+            if (Util.GetLastChainCard() != null && Util.GetLastChainCard().IsCode(15693423) && Duel.LastChainPlayer != 0)
+            {
+                List<int> list = new List<int>();
+                if (Bot.HasInMonstersZone(CardId.CrusadiaAvramax))
+                    list.Add(CardId.CrusadiaAvramax);
+                if (Bot.HasInMonstersZone(CardId.ApollousaBOG) && !Bot.HasInMonstersZone(CardId.CrusadiaAvramax))
+                    list.Add(CardId.ApollousaBOG);
+                if (Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !Bot.HasInMonstersZone(CardId.ApollousaBOG) && !Bot.HasInMonstersZone(CardId.CrusadiaAvramax))
+                    list.Add(CardId.ABCDragonBuster);
+                if (Bot.HasInMonstersZone(CardId.CrusadiaAvramax) && !Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !Bot.HasInMonstersZone(CardId.ApollousaBOG) && !Bot.HasInMonstersZone(CardId.CrusadiaAvramax))
+                    list.Add(CardId.CyberDragonInfinity);
+                int todrop = min;
+                IList<ClientCard> result = new List<ClientCard>();
+                IList<ClientCard> ToRemove = new List<ClientCard>(cards);
+                List<int> record = new List<int>();
+                foreach (ClientCard card in ToRemove)
+                {
+                    if (card?.Id != 0 && !card.IsCode(list))
+                    {
+                        result.Add(card);
+                        if (--todrop <= 0) break;
+                    }
+                }
+                if (todrop <= 0) return result;
+            }
+            return null;
         }
 
         private bool CrossOutNegate()
@@ -185,26 +264,38 @@ namespace WindBot.Game.AI.Decks
 
         private bool ABCUnionSummon()
         {
+            int[] MonsterMassRemoval =
+            {
+                12580477,   //Raigeki
+                53129443,   //Dark Hole
+                14532163,   //Lightning Storm
+                99330325,   //Interrupted Kaiju Slumber
+                69162969,   //Lightning Vortex
+                53582587,   //Torrential Tribute
+                8251996,    //Ojama Delta Hurricane!!
+                44883830,   //Des Croaking
+            };
             if (ActivateDescription == Util.GetStringId(CardId.ABCDragonBuster, 0))
                 return false;
-            /*ClientCard LastChainCard = Util.GetLastChainCard();
+            ClientCard LastChainCard = Util.GetLastChainCard();
             if (Duel.LastChainPlayer == 0 || !ABCBanishUsed)
             {
                 if (LastChainCard != null && LastChainCard.IsCode(CardId.IPMasquerina))
                 {
-                    AI.SelectOption(0);
                     ABCUnionSummonUsed = true;
                     return true;
                 }
-                if (LastChainCard != null && !LastChainCard.IsCode(CardId.IPMasquerina))
-                    return false;
+                if (LastChainCard != null && LastChainCard.IsCode(MonsterMassRemoval) && !Bot.HasInMonstersZone(CardId.IPMasquerina))
+                {
+                    ABCUnionSummonUsed = true;
+                    return true;
+                }
                 return false;
-            }*/
+            }
             if (Duel.LastChainPlayer == 0)
                 return false;
-            if (ABCBanishUsed)
+            if (ABCBanishUsed || (Duel.Phase == DuelPhase.End && Duel.Player == 1))
             {
-                AI.SelectOption(1);
                 ABCUnionSummonUsed = true;
                 return true;
             }
@@ -288,6 +379,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.PhotonVanisher,
                 CardId.GalaxySoldier,
                 CardId.UnionDriver,
+                CardId.HeavyMechSupportArmor,
             };
             if (Enemy.SpellZone.GetMatchingCardsCount(card => card.Location == CardLocation.SpellZone) >= Enemy.MonsterZone.GetMatchingCardsCount(card => card.Location == CardLocation.MonsterZone))
             {
@@ -312,6 +404,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.PhotonVanisher,
                 CardId.GalaxySoldier,
                 CardId.UnionDriver,
+                CardId.HeavyMechSupportArmor,
             };
             if (Enemy.MonsterZone.GetMatchingCardsCount(card => card.Location == CardLocation.MonsterZone) >= Enemy.SpellZone.GetMatchingCardsCount(card => card.Location == CardLocation.SpellZone))
             {
@@ -337,6 +430,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.PhotonVanisher,
                 CardId.GalaxySoldier,
                 CardId.UnionDriver,
+                CardId.HeavyMechSupportArmor,
             };
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2 && (Bot.HasInMonstersZone(CardId.KnightmareCerberus) || Bot.HasInMonstersZone(CardId.KnightmarePhoenix)))
             {
@@ -383,6 +477,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.BBusterDrake);
             if (Bot.HasInHand(discards))
                 AI.SelectCard(discards);
+            else AI.SelectCard(Card.Location = CardLocation.Hand);
             AI.SelectNextCard(target);
             return true;
         }
@@ -406,6 +501,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.BBusterDrake);
             if (Bot.HasInHand(discards))
                 AI.SelectCard(discards);
+            else AI.SelectCard(Card.Location = CardLocation.Hand);
             AI.SelectNextCard(target);
             return true;
         }
@@ -430,6 +526,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.BBusterDrake);
             if (Bot.HasInHand(discards))
                 AI.SelectCard(discards);
+            else AI.SelectCard(Card.Location = CardLocation.Hand);
             AI.SelectNextCard(target);
             return true;
         }
@@ -488,6 +585,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (UnionHangerActivated)
                 return false;
+            if (Bot.HasInGraveyard(ABCUnion) && !NormalSummonUsed)
+                AI.SelectCard(CardId.HeavyMechSupportArmor);
             if (Bot.HasInHand(CardId.BBusterDrake) || Bot.HasInHand(CardId.AAssaultCore))
                 AI.SelectCard(CardId.CCrushWyvern);
             else
@@ -542,10 +641,19 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
+        private bool HMSArmorSummon()
+        {
+            if (!Bot.HasInGraveyard(ABCUnion))
+                return false;
+            NormalSummonUsed = true;
+            return true;
+        }
+
         private bool CCrushWyvernSummon()
         {
             if (!Bot.HasInHand(CardId.BBusterDrake) && !Bot.HasInHand(CardId.AAssaultCore))
                 return false;
+            NormalSummonUsed = true;
             return true;
         }
 
@@ -553,6 +661,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.HasInHand(CardId.CCrushWyvern))
                 return false;
+            NormalSummonUsed = true;
             return true;
         }
 
@@ -560,6 +669,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Bot.HasInHand(CardId.CCrushWyvern) || Bot.HasInHand(CardId.BBusterDrake))
                 return false;
+            NormalSummonUsed = true;
             return true;
         }
 
@@ -623,7 +733,8 @@ namespace WindBot.Game.AI.Decks
                 CardId.CCrushWyvern,
                 CardId.BBusterDrake,
                 CardId.AAssaultCore,
-                CardId.PhotonThrasher
+                CardId.PhotonThrasher,
+                CardId.HeavyMechSupportArmor,
             };
             //(need to allow them if they are equiped by effects other than union driver)
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2 && !Bot.HasInSpellZone(ABCUnion))
@@ -692,6 +803,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.PhotonVanisher,
                 CardId.GalaxySoldier,
                 CardId.UnionDriver,
+                CardId.PhotonThrasher,
             };
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2)
             {
@@ -797,6 +909,11 @@ namespace WindBot.Game.AI.Decks
                 return false;
             if (Bot.HasInMonstersZone(CardId.IPMasquerina) && (!Bot.HasInHand(CardId.GalaxySoldier) || GalaxySoldierUsed))
             {
+                if (!NormalSummonUsed && Bot.HasInGraveyard(CardId.HeavyMechSupportArmor))
+                {
+                    AI.SelectCard(CardId.HeavyMechSupportArmor);
+                    return true;
+                }
                 if (Bot.Graveyard.GetCardCount(CardId.CCrushWyvern) >= 2)
                 {
                     AI.SelectCard(CardId.CCrushWyvern);
@@ -823,7 +940,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Grave)
             {
-                if (Duel.Player == 1)
+                if (!NormalSummonUsed)
                     AI.SelectCard(CardId.HeavyMechSupportArmor);
                 if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.CCrushWyvern))
                     AI.SelectCard(CardId.CCrushWyvern);
@@ -852,6 +969,43 @@ namespace WindBot.Game.AI.Decks
                 if (Bot.HasInMonstersZoneOrInGraveyard(CardId.BBusterDrake) && Bot.HasInMonstersZoneOrInGraveyard(CardId.AAssaultCore))
                     AI.SelectCard(CardId.CCrushWyvern);
                 else AI.SelectCard(ABCUnion);
+                return true;
+            }
+            return false;
+        }
+
+        private bool HMSArmorEffect()
+        {
+            if (Card.Location == CardLocation.MonsterZone && !HMSNormalUsed)
+            {
+                int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+                };
+                if ((Bot.HasInHand(CardId.BBusterDrake) || Bot.HasInHand(CardId.AAssaultCore)) && Bot.HasInGraveyard(CardId.CCrushWyvern))
+                    AI.SelectCard(CardId.CCrushWyvern);
+                if (Bot.HasInGraveyard(CardId.BBusterDrake))
+                    AI.SelectCard(CardId.BBusterDrake);
+                if (Bot.HasInGraveyard(CardId.AAssaultCore))
+                    AI.SelectCard(CardId.AAssaultCore);
+                else AI.SelectCard(ABCUnion);
+                HMSNormalUsed = true;
+                return true;
+            }
+            return false;
+        }
+
+        private bool HMSArmorEquip()
+        {
+            if (Card.Location == CardLocation.MonsterZone && HMSNormalUsed)
+            {
+                if (Bot.HasInMonstersZone(CardId.CyberDragonInfinity))
+                    AI.SelectCard(CardId.CyberDragonInfinity);
+                if (Bot.HasInMonstersZone(CardId.ABCDragonBuster))
+                    AI.SelectCard(CardId.ABCDragonBuster);
+                if (Bot.HasInMonstersZone(CardId.InvokedMechaba))
+                    AI.SelectCard(CardId.InvokedMechaba);
                 return true;
             }
             return false;
