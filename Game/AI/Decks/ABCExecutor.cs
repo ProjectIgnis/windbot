@@ -59,14 +59,15 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.ApollousaBOG, ApollousaNegate);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityNegate);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityAttach);
+            AddExecutor(ExecutorType.Activate, CardId.CyberDragonNova, CyberDragonNovaFloat);
             AddExecutor(ExecutorType.Activate, CardId.IPMasquerina, IPMasquerinaEffect);
             AddExecutor(ExecutorType.Activate, CardId.ABCDragonBuster, ABCBanish);
             AddExecutor(ExecutorType.Activate, CardId.ABCDragonBuster, ABCUnionSummon);
 
             AddExecutor(ExecutorType.Activate, CardId.UnionHanger, UnionHangerActivate);
             AddExecutor(ExecutorType.Activate, CardId.UnionHanger, UnionHangerEquip);
-            AddExecutor(ExecutorType.SpSummon, CardId.PhotonThrasher, PhotonSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.PhotonVanisher, PhotonSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.PhotonThrasher, PhotonThrasherSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.PhotonVanisher, PhotonVanisherSummon);
             AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEquip);
             AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEffect);
             AddExecutor(ExecutorType.Activate, CardId.ReinaforcmentOfTheArmy, ROTAEffect);
@@ -161,6 +162,11 @@ namespace WindBot.Game.AI.Decks
 
         private bool ABCBanish()
         {
+            int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+            };
             if (ActivateDescription == Util.GetStringId(CardId.ABCDragonBuster, 1))
                 return false;
             if (Duel.LastChainPlayer == 0 || ABCBanishUsed)
@@ -169,8 +175,9 @@ namespace WindBot.Game.AI.Decks
             if (target == null || ((target.HasType(CardType.Spell) || target.HasType(CardType.Trap)) && (!target.HasType(CardType.Equip) && !target.HasType(CardType.Continuous) && !target.HasType(CardType.Field))))
                 return false;
             AI.SelectOption(0);
-            AI.SelectCard(ABCUnion);
-            AI.SelectCard(Card.Location = CardLocation.Hand);
+            if (Bot.HasInHand(ABCUnion))
+                AI.SelectCard(ABCUnion);
+            else AI.SelectCard(Card.Location = CardLocation.Hand);
             AI.SelectNextCard(target);
             ABCBanishUsed = true;
             return true;
@@ -210,6 +217,8 @@ namespace WindBot.Game.AI.Decks
                 return false;
             int[] Blacklist =
             {
+                74117290,   //Dark World Dealings
+                74519184,   //Hand Destruction
                 70368879,   //Upstart Goblin
                 93946239,   //Into the Void
                 73628505,   //Terraforming
@@ -230,7 +239,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.LastChainPlayer != -1)
                 return false;
-                if (Enemy.GetMonsterCount() >= 1)
+            if (Enemy.GetMonsterCount() >= 1)
             {
                 AI.SelectCard(Util.GetBestEnemyMonster());
                 return true;
@@ -238,19 +247,15 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
+        private bool CyberDragonNovaFloat()//needs a target(abc cannot be summoned)
+        {
+            if (Card.Location != CardLocation.Grave)
+                return false;
+            return true;
+        }
+
         private bool ApollousaNegate()
         {
-            int[] Danger = {
-                52350806,
-                16209941,
-                26302107,
-                43316238,
-                70711847,
-                83518674,
-                90807199,
-                43694650,
-                99745551,
-            };
             int[] Blacklist =
             {
                 64734921,   //The Agent of Creation - Venus
@@ -264,8 +269,8 @@ namespace WindBot.Game.AI.Decks
                 return false;   //SummonerMonk
             if (LastChainCard.IsCode(43218406) && (LastChainCard.Location == CardLocation.MonsterZone))
                 return false;   //WaterGizmek
-            if (LastChainCard.IsCode(Danger) && (LastChainCard.Location == CardLocation.Hand))
-                return false;
+            if (LastChainCard.HasSetcode(0x11e) && (LastChainCard.Location == CardLocation.Hand))
+                return false;   //Danger
             if (LastChainCard.IsCode(Blacklist))
                 return false;
             return true;
@@ -361,25 +366,23 @@ namespace WindBot.Game.AI.Decks
 
         private bool KnightmarePhoenixEffect()
         {
-            int[] ABCUnion = {
+            int[] discards = {
                 CardId.AAssaultCore,
                 CardId.BBusterDrake,
-                CardId.CCrushWyvern
+                CardId.CCrushWyvern,
+                CardId.PhotonThrasher
             };
             ClientCard target = Util.GetBestEnemySpell();
             if (target == null)
                 return false;
-            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake))
+            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInHand(CardId.CCrushWyvern))
                 AI.SelectCard(CardId.CCrushWyvern);
-            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern))
+            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInHand(CardId.AAssaultCore))
                 AI.SelectCard(CardId.AAssaultCore);
-            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore))
+            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInHand(CardId.BBusterDrake))
                 AI.SelectCard(CardId.BBusterDrake);
-            if (Bot.HasInHand(ABCUnion) || Bot.HasInHand(CardId.PhotonThrasher))
-            {
-                AI.SelectCard(ABCUnion);
-                AI.SelectCard(CardId.PhotonThrasher);
-            }
+            if (Bot.HasInHand(discards))
+                AI.SelectCard(discards);
             AI.SelectNextCard(target);
             return true;
         }
@@ -387,7 +390,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool KnightmareCerberusEffect()
         {   
-            int[] ABCUnion = {
+            int[] discards = {
                 CardId.AAssaultCore,
                 CardId.BBusterDrake,
                 CardId.CCrushWyvern
@@ -395,17 +398,14 @@ namespace WindBot.Game.AI.Decks
             ClientCard target = Util.GetBestEnemyMonster(canBeTarget: true);
             if (target == null)
                 return false;
-            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake))
+            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInHand(CardId.CCrushWyvern))
                 AI.SelectCard(CardId.CCrushWyvern);
-            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern))
+            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInHand(CardId.AAssaultCore))
                 AI.SelectCard(CardId.AAssaultCore);
-            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore))
+            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInHand(CardId.BBusterDrake))
                 AI.SelectCard(CardId.BBusterDrake);
-            if (Bot.HasInHand(ABCUnion) || Bot.HasInHand(CardId.PhotonThrasher))
-            {
-                AI.SelectCard(ABCUnion);
-                AI.SelectCard(CardId.PhotonThrasher);
-            }
+            if (Bot.HasInHand(discards))
+                AI.SelectCard(discards);
             AI.SelectNextCard(target);
             return true;
         }
@@ -413,25 +413,23 @@ namespace WindBot.Game.AI.Decks
 
         private bool KnightmareUnicornEffect()
         {
-            int[] ABCUnion = {
+            int[] discards = {
                 CardId.AAssaultCore,
                 CardId.BBusterDrake,
-                CardId.CCrushWyvern
+                CardId.CCrushWyvern,
+                CardId.PhotonThrasher
             };
             ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
             if (target == null)
                 return false;
-            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake))
+            if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInHand(CardId.CCrushWyvern))
                 AI.SelectCard(CardId.CCrushWyvern);
-            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern))
+            if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInHand(CardId.AAssaultCore))
                 AI.SelectCard(CardId.AAssaultCore);
-            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore))
+            if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInHand(CardId.BBusterDrake))
                 AI.SelectCard(CardId.BBusterDrake);
-            if (Bot.HasInHand(ABCUnion) || Bot.HasInHand(CardId.PhotonThrasher))
-            {
-                AI.SelectCard(ABCUnion);
-                AI.SelectCard(CardId.PhotonThrasher);
-            }
+            if (Bot.HasInHand(discards))
+                AI.SelectCard(discards);
             AI.SelectNextCard(target);
             return true;
         }
@@ -504,19 +502,26 @@ namespace WindBot.Game.AI.Decks
             int[] ABCUnion = {
                 CardId.AAssaultCore,
                 CardId.BBusterDrake,
-                CardId.CCrushWyvern
+                CardId.CCrushWyvern,
             };
             if (UnionHangerEquiped)
                 return false;
+            if (Duel.Player == 1)
+                AI.SelectCard(ABCUnion);
             if (!ABCUnionSummonUsed && !UnionDriverUsed && Duel.Player == 0)
                 AI.SelectCard(CardId.UnionDriver);
-            else AI.SelectCard(ABCUnion);
             UnionHangerEquiped = true;
             return true;
         }
 
 
-        private bool PhotonSummon()
+        private bool PhotonThrasherSummon()
+        {
+            return true;
+        }
+
+
+        private bool PhotonVanisherSummon()
         {
             int[] mats =
             {
@@ -525,7 +530,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.CCrushWyvern,
                 CardId.PhotonThrasher,
             };
-            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) >= 2)
+            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) >= 2 || Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) == 0 || Bot.HasInMonstersZone(CardId.IPMasquerina))
                 return false;
             return true;
         }
@@ -650,7 +655,7 @@ namespace WindBot.Game.AI.Decks
                 foreach (ClientCard card in bot_monster)
                 {
                     if (card.IsFacedown()) continue;
-                    if (!materials2.Contains(card) && card.LinkCount <= 2 && card.IsCode(materials))
+                    if (!materials2.Contains(card) && card.LinkCount <= 3 && card.IsCode(materials))
                     {
                         materials2.Add(card);
                         link_count += (card.HasType(CardType.Link)) ? card.LinkCount : 1;
@@ -734,7 +739,7 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectMaterials(materials1);
                     return true;
                 }
-                if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials1)) >= 2 && !Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !ABCUnionSummonUsed)
+                if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials2)) >= 2 && !Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !ABCUnionSummonUsed)
                 {
                     AI.SelectCard(CardId.CrusadiaAvramax);
                     AI.SelectMaterials(materials2);
@@ -748,7 +753,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectMaterials(materials1);
                 return true;
             }
-            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials1)) >= 2 && !Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !ABCUnionSummonUsed)
+            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials2)) >= 2 && !Bot.HasInMonstersZone(CardId.ABCDragonBuster) && !ABCUnionSummonUsed)
             {
                 AI.SelectCard(CardId.CrusadiaAvramax);
                 AI.SelectMaterials(materials2);
@@ -818,6 +823,8 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Grave)
             {
+                if (Duel.Player == 1)
+                    AI.SelectCard(CardId.HeavyMechSupportArmor);
                 if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.CCrushWyvern))
                     AI.SelectCard(CardId.CCrushWyvern);
                 if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.AAssaultCore))
@@ -833,6 +840,11 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.Grave)
             {
+                int[] ABCUnion = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern
+                };
                 if (!Bot.HasInMonstersZoneOrInGraveyard(CardId.BBusterDrake) && Bot.HasInHand(CardId.BBusterDrake))
                     AI.SelectCard(CardId.BBusterDrake);
                 if (!Bot.HasInMonstersZoneOrInGraveyard(CardId.AAssaultCore) && Bot.HasInHand(CardId.AAssaultCore))
@@ -901,32 +913,37 @@ namespace WindBot.Game.AI.Decks
                 CardId.BBusterDrake,
                 CardId.CCrushWyvern
             };
+            int[] discards = {
+                CardId.AAssaultCore,
+                CardId.BBusterDrake,
+                CardId.CCrushWyvern,
+                CardId.PhotonThrasher
+            };
             if (GalaxySoldierUsed && !Bot.HasInMonstersZone(CardId.GalaxySoldier))
                 return false;
             if (Card.Location == CardLocation.Hand)
             {
-                if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake))
+                if (Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInHand(CardId.CCrushWyvern))
                 {
                     AI.SelectCard(CardId.CCrushWyvern);
                     return true;
                 }
-                if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern))
+                if (Bot.HasInGraveyard(CardId.BBusterDrake) && Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInHand(CardId.AAssaultCore))
                 {
                     AI.SelectCard(CardId.AAssaultCore);
                     return true;
                 }
-                if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore))
+                if (Bot.HasInGraveyard(CardId.CCrushWyvern) && Bot.HasInGraveyard(CardId.AAssaultCore) && Bot.HasInHand(CardId.BBusterDrake))
                 {
                     AI.SelectCard(CardId.BBusterDrake);
                     return true;
                 }
-                if (Bot.HasInHand(ABCUnion) || Bot.HasInHand(CardId.PhotonThrasher))
+                if (Bot.HasInHand(CardId.AAssaultCore) || Bot.HasInHand(CardId.BBusterDrake) || Bot.HasInHand(CardId.CCrushWyvern) || Bot.HasInHand(CardId.PhotonThrasher))
                 {
-                    AI.SelectCard(ABCUnion);
-                    AI.SelectCard(CardId.PhotonThrasher);
+                    AI.SelectCard(discards);
                     return true;
                 }
-                if (!Bot.HasInHandOrHasInMonstersZone(ABCUnion) && (Bot.Hand.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) >=3 || (Bot.Hand.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) >= 2 && Bot.HasInMonstersZone(CardId.GalaxySoldier))))
+                if (!Bot.HasInHandOrHasInMonstersZone(ABCUnion) && (Bot.Hand.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) >= 3 || (Bot.Hand.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) >= 2 && Bot.HasInMonstersZone(CardId.GalaxySoldier))))
                 {
                     return true;
                 }
