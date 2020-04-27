@@ -29,7 +29,7 @@
         "difficulty": 0,
         "masterRules": [3, 4, 5]
     },
-	{
+    {
         "name": "Cyberse",
         "deck": "ST1732",
         "difficulty": 2,
@@ -48,11 +48,11 @@
         "masterRules": [3, 4, 5]
     },
     {
-      "name": "Dragma",
-      "deck": "Dragma",
-      "difficulty": 3,
-      "masterRules": [5]
-    }
+        "name": "Dragma",
+        "deck": "Dragma",
+        "difficulty": 3,
+        "masterRules": [5]
+    },
     {
         "name": "Dragun of Red-Eyes",
         "deck": "Dragun",
