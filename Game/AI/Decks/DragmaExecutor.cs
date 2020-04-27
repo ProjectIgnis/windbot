@@ -19,10 +19,10 @@ namespace WindBot.Game.AI.Decks
             public const int InvokedInvocation = 74063034;
             public const int InvokedMeltdown = 47679935;
             public const int InvokedTerraforming = 73628505;
-            public const int InvokedAlmiraj = 2220237;
-            public const int InvokedGardna = 98506199;
+            public const int InvokedAlmiraj = 60303245;
+            public const int InvokedGardna = 2220237;
             public const int InvokedMechaba = 75286621;
-            public const int InvokedCaliga = 60303688;
+            public const int InvokedCaliga = 13529466;
             public const int InvokedTower = 97300502;
 
             public const int DragmaEcclesia = 60303688;
@@ -47,8 +47,8 @@ namespace WindBot.Game.AI.Decks
             public const int StapleVenom = 41209827;
             public const int StapleDragostapelia = 69946549;
             public const int StapleNtss = 80532587;
-            public const int StapleOmega = 13529466;
-            public const int StaplePegasus = 74586817;
+            public const int StapleOmega = 74586817;
+            public const int StaplePegasus = 98506199;
         }
 
         public DragmaExecutor(GameAI ai, Duel duel)
@@ -61,7 +61,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.StapleJudgment, DefaultSolemnJudgment);
             AddExecutor(ExecutorType.Activate, CardId.StapleSuperPoly, SuperPolyEffect);
             AddExecutor(ExecutorType.Activate, CardId.InvokedMechaba, MechabaNegate);
-            AddExecutor(ExecutorType.Activate, CardId.InvokedAleister, AleisterBuff);
+            AddExecutor(ExecutorType.Activate, CardId.InvokedAleister, AleisterEffect);
             AddExecutor(ExecutorType.Activate, CardId.DragmaFleur, FleurSummon);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollRuq, RuqEffect);
             AddExecutor(ExecutorType.Activate, CardId.DragmaPunish, PunishEffect);
@@ -71,18 +71,16 @@ namespace WindBot.Game.AI.Decks
             // priority 2 - primary combo (invoked)
             AddExecutor(ExecutorType.Activate, CardId.InvokedTerraforming, TerraformingEffect);
             AddExecutor(ExecutorType.Activate, CardId.InvokedMeltdown, MeltdownEffect);
-            AddExecutor(ExecutorType.Activate, CardId.InvokedAleister, AleisterSearch);
             AddExecutor(ExecutorType.Summon, CardId.InvokedAleister, AleisterSummon);
-            AddExecutor(ExecutorType.Summon, CardId.InvokedAlmiraj, AlmirajSummon);
-            AddExecutor(ExecutorType.Summon, CardId.InvokedGardna, GardnaSummon);
-            AddExecutor(ExecutorType.Activate, CardId.InvokedInvocation, InvocationFuse);
-            AddExecutor(ExecutorType.Activate, CardId.InvokedInvocation, InvocationRecur);
+            AddExecutor(ExecutorType.SpSummon, CardId.InvokedAlmiraj, AlmirajSummon);
+            // Aleister search handled above
+            AddExecutor(ExecutorType.SpSummon, CardId.InvokedGardna, GardnaSummon);
+            AddExecutor(ExecutorType.Activate, CardId.InvokedInvocation, InvocationEffect);
 
             // priority 3 - primary combo (dragma)
             AddExecutor(ExecutorType.Activate, CardId.DragmaNadir, NadirEffect);
-            AddExecutor(ExecutorType.Activate, CardId.DragmaEcclesia, EcclesiaSummon);
             AddExecutor(ExecutorType.Summon, CardId.DragmaEcclesia, EcclesiaNormal);
-            AddExecutor(ExecutorType.Activate, CardId.DragmaEcclesia, EcclesiaSearch);
+            AddExecutor(ExecutorType.Activate, CardId.DragmaEcclesia, EcclesiaEffect);
             AddExecutor(ExecutorType.Activate, CardId.ShaddollApkallone, ApkalloneSearch);
             AddExecutor(ExecutorType.Activate, CardId.DragmaMaximus, MaximusSummon);
             AddExecutor(ExecutorType.Activate, CardId.DragmaMaximus, MaximusMill);
@@ -90,6 +88,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.DragmaBastard, BastardSearch);
 
             // priority 4 - misc. nadir/maximus targets
+            AddExecutor(ExecutorType.Activate, CardId.StapleNtss, NtssPop);
             //AddExecutor(ExecutorType.Activate, CardId.StapleOmega, OmegaRecur);
             //AddExecutor(ExecutorType.Activate, CardId.StaplePegasus, PegasusSpin);
 
@@ -105,12 +104,12 @@ namespace WindBot.Game.AI.Decks
             //AddExecutor(ExecutorType.Activate, CardId.InvokedTower, TowerBuff);
 
             // priority 6 - set cards
+            AddExecutor(ExecutorType.SpellSet, CardId.DragmaPunish, RuqSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleCalled, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleImperm, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleSuperPoly, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleJudgment, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.DragmaPunish, TrapSet);
-
         }
 
         private bool FleurAttackUsed;
@@ -269,8 +268,14 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        private bool AleisterBuff()
+        private bool AleisterEffect()
         {
+            // search effect
+            if (Card.Location == CardLocation.MonsterZone)
+            {
+                return true;
+            }
+
             // activate only in damage calc
             if (!(Duel.Phase == DuelPhase.DamageCal))
                 return false;
@@ -301,6 +306,12 @@ namespace WindBot.Game.AI.Decks
 
         private bool FleurSummon()
         {
+            // battle phase buff
+            if (Card.Location == CardLocation.MonsterZone)
+            {
+                return true;
+            }
+
             // summon for body at end of main
             if (Duel.Player == 1 && (Duel.MainPhase.CanBattlePhase || Duel.MainPhase.CanEndPhase))
             {
@@ -310,7 +321,7 @@ namespace WindBot.Game.AI.Decks
 
             // summon to negate
             ClientCard chainCard = Util.GetLastChainCard();
-            if (Duel.LastChainPlayer == 1 && chainCard != null)
+            if (Duel.LastChainPlayer == 1 && chainCard != null && chainCard.Location == CardLocation.MonsterZone)
             {
                 AI.SelectCard(chainCard);
                 return true;
@@ -357,6 +368,12 @@ namespace WindBot.Game.AI.Decks
 
         private bool RuqEffect()
         {
+            if (Card.IsFacedown())
+            {
+                AI.SelectYesNo(false);
+                return true;
+            }
+
             // Winda = 1 Shaddoll + 1 DARK
             if (Bot.ExtraDeck.ContainsCardWithId(CardId.ShaddollWinda)
                 && Bot.Graveyard.IsExistingMatchingCard(card => card.HasSetcode(0x9d))
@@ -454,11 +471,6 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        private bool AleisterSearch()
-        {
-            return true;
-        }
-
         private bool AleisterSummon()
         {
             return true;
@@ -486,8 +498,13 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        private bool InvocationFuse()
+        private bool InvocationEffect()
         {
+            // shuffle effect
+            if (Card.Location == CardLocation.Grave)
+            {
+                return true;
+            }
             IList<ClientCard> lightCards = Enemy.Graveyard.GetMatchingCards(card => card.HasAttribute(CardAttribute.Light));
             if (lightCards.Count > 0)
             {
@@ -496,7 +513,7 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
-            if (Bot.Graveyard.GetCardCount(CardId.InvokedGardna) > 0)
+            if (Bot.HasInMonstersZoneOrInGraveyard(CardId.InvokedGardna))
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(CardId.InvokedGardna);
@@ -519,11 +536,6 @@ namespace WindBot.Game.AI.Decks
             }
 
             return false;
-        }
-
-        private bool InvocationRecur()
-        {
-            return true;
         }
 
         // priority 3 - dragma combo
@@ -570,18 +582,18 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        private bool EcclesiaSummon()
-        {
-            return true;
-        }
-
         private bool EcclesiaNormal()
         {
             return true;
         }
 
-        private bool EcclesiaSearch()
+        private bool EcclesiaEffect()
         {
+            if (Card.Location == CardLocation.Hand)
+            {
+                return true;
+            }
+
             if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.DragmaMaximus))
             {
                 AI.SelectCard(CardId.DragmaMaximus);
@@ -589,7 +601,7 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
-            if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.DragmaFleur) && !BastardSentThisTurn)
+            if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.DragmaFleur) && !MaximusUsed && !BastardSentThisTurn)
             {
                 AI.SelectCard(CardId.DragmaFleur);
                 EcclesiaUsed = true;
@@ -785,6 +797,8 @@ namespace WindBot.Game.AI.Decks
 
             if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.DragmaFleur))
             {
+                // let ecclesia search fleur
+                BastardSentThisTurn = false;
                 AI.SelectCard(CardId.DragmaFleur);
                 AI.SelectOption(BastardOptions.search);
                 return true;
@@ -793,7 +807,24 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        //
+        // priority 5 - misc send targets
+        private bool NtssPop()
+        {
+            ClientCard bestCard = Util.GetBestEnemyCard(false, true);
+            if (bestCard != null)
+            {
+                AI.SelectCard(bestCard);
+                return true;
+            }
+            return false;
+        }
+
+        // priority 6 - set backrow
+
+        private bool RuqSet()
+        {
+            return true;
+        }
 
         private bool TrapSet()
         {
