@@ -158,7 +158,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (!defender.IsMonsterHasPreventActivationEffectInBattle())
             {
-                if (attacker.IsCode(CardId.ShaddollConstruct) && !attacker.IsDisabled() && defender.IsSpecialSummoned) // TODO: Possible to check destruction immunity?
+                if (attacker.IsCode(CardId.ShaddollConstruct) && !attacker.IsDisabled() && defender.IsSpecialSummoned) // NOTE: Possible to check destruction immunity?
                     attacker.RealPower = 9999;
                 if (attacker.IsCode(CardId.DragmaFleur) && !attacker.IsDisabled() && !FleurAttackUsed)
                     attacker.RealPower += 500;
@@ -194,6 +194,12 @@ namespace WindBot.Game.AI.Decks
                 {
                     return fleurCard;
                 }
+            }
+
+            // if caliga is restricting attacks, swing with the strongest first
+            if (attackers.ContainsCardWithId(CardId.InvokedCaliga))
+            {
+                return Util.GetBestBotMonster();
             }
 
             return base.OnSelectAttacker(attackers, defenders);
@@ -308,12 +314,18 @@ namespace WindBot.Game.AI.Decks
             }
 
             // summon for body at end of main
-            // TODO: Figure out end of Main Phase
             //if (Duel.Player == 1 && (Duel.MainPhase.CanBattlePhase || Duel.MainPhase.CanEndPhase))
             //{
             //    AI.SelectCard(Util.GetBestEnemyMonster(true));
             //    return true;
             //}
+
+            // in lieu of end of M1, summon in M2
+            if (Duel.Player == 1 && Duel.Phase == DuelPhase.Main2)
+            {
+                AI.SelectCard(Util.GetBestEnemyMonster(true));
+                return true;
+            }
 
             // summon to negate
             ClientCard chainCard = Util.GetLastChainCard();
@@ -434,7 +446,7 @@ namespace WindBot.Game.AI.Decks
         {
             // summon to negate
             ClientCard chainCard = Util.GetLastChainCard();
-            if (Duel.LastChainPlayer == 1 && chainCard != null && !chainCard.IsShouldNotBeMonsterTarget()) // TODO: Check for already has counter
+            if (Duel.LastChainPlayer == 1 && chainCard != null && !chainCard.IsShouldNotBeMonsterTarget()) // NOTE: Can check for already has counter?
             {
                 AI.SelectCard(chainCard);
                 return true;
