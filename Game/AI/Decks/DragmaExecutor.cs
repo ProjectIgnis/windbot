@@ -99,7 +99,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.InvokedTower, TowerEff);
 
             // priority 6 - set cards
-            AddExecutor(ExecutorType.SpellSet, CardId.DragmaPunish, RuqSet);
+            AddExecutor(ExecutorType.SpellSet, CardId.ShaddollRuq, RuqSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleCalled, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleImperm, TrapSet);
             AddExecutor(ExecutorType.SpellSet, CardId.StapleSuperPoly, TrapSet);
@@ -308,11 +308,12 @@ namespace WindBot.Game.AI.Decks
             }
 
             // summon for body at end of main
-            if (Duel.Player == 1 && (Duel.MainPhase.CanBattlePhase || Duel.MainPhase.CanEndPhase))
-            {
-                AI.SelectCard(Util.GetBestEnemyMonster());
-                return true;
-            }
+            // TODO: Figure out end of Main Phase
+            //if (Duel.Player == 1 && (Duel.MainPhase.CanBattlePhase || Duel.MainPhase.CanEndPhase))
+            //{
+            //    AI.SelectCard(Util.GetBestEnemyMonster(true));
+            //    return true;
+            //}
 
             // summon to negate
             ClientCard chainCard = Util.GetLastChainCard();
@@ -328,7 +329,7 @@ namespace WindBot.Game.AI.Decks
         private bool PunishEffect()
         {
             // don't lock ourselves out of extra if we have Ruq to use
-            if (Bot.HasInSpellZone(CardId.ShaddollRuq) && !RuqUsed)
+            if (Bot.HasInSpellZone(CardId.ShaddollRuq) && (!RuqUsed || Duel.CurrentChain.ContainsCardWithId(CardId.ShaddollRuq)))
             {
                 return false;
             }
@@ -363,12 +364,12 @@ namespace WindBot.Game.AI.Decks
 
         private bool RuqEffect()
         {
+            // flip faceup immediately to help the AI realise to fusion summon
             if (Card.IsFacedown())
             {
                 AI.SelectYesNo(false);
                 return true;
             }
-
             // Winda = 1 Shaddoll + 1 DARK
             if (Bot.ExtraDeck.ContainsCardWithId(CardId.ShaddollWinda)
                 && Bot.Graveyard.IsExistingMatchingCard(card => card.HasSetcode(0x9d))
@@ -506,6 +507,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(lightCards);
+                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -513,6 +515,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(CardId.InvokedGardna);
+                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -521,6 +524,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedTower);
                 AI.SelectMaterials(fusionCards);
+                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -543,6 +547,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedTower);
                 AI.SelectMaterials(selfFusionCards);
+                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -551,6 +556,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedCaliga);
                 AI.SelectMaterials(darkCards);
+                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
