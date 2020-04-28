@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using WindBot;
@@ -89,19 +89,14 @@ namespace WindBot.Game.AI.Decks
 
             // priority 4 - misc. nadir/maximus targets
             AddExecutor(ExecutorType.Activate, CardId.StapleNtss, NtssPop);
-            //AddExecutor(ExecutorType.Activate, CardId.StapleOmega, OmegaRecur);
-            //AddExecutor(ExecutorType.Activate, CardId.StaplePegasus, PegasusSpin);
+            AddExecutor(ExecutorType.Activate, CardId.StapleOmega, OmegaRecur);
+            AddExecutor(ExecutorType.Activate, CardId.StaplePegasus, PegasusSpin);
 
             // priority 5 - niche scenarios
-            //AddExecutor(ExecutorType.Activate, CardId.DragmaFleur, FleurAttack);
-            //AddExecutor(ExecutorType.Activate, CardId.ShaddollBeast, BeastDraw);
-            //AddExecutor(ExecutorType.Activate, CardId.ShaddollBeast, BeastFlip);
-            //AddExecutor(ExecutorType.Activate, CardId.ShaddollConstruct, ConstructMill);
-            //AddExecutor(ExecutorType.Activate, CardId.StapleVenom, VenomAtk);
-            //AddExecutor(ExecutorType.Activate, CardId.StapleVenom, VenomEff);
-            //AddExecutor(ExecutorType.Activate, CardId.StapleVenom, VenomNuke);
-            //AddExecutor(ExecutorType.Activate, CardId.InvokedTower, TowerDestroy);
-            //AddExecutor(ExecutorType.Activate, CardId.InvokedTower, TowerBuff);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollBeast, BeastEffect);
+            AddExecutor(ExecutorType.Activate, CardId.ShaddollConstruct, ConstructMill);
+            AddExecutor(ExecutorType.Activate, CardId.StapleVenom, VenomEff);
+            AddExecutor(ExecutorType.Activate, CardId.InvokedTower, TowerEff);
 
             // priority 6 - set cards
             AddExecutor(ExecutorType.SpellSet, CardId.DragmaPunish, RuqSet);
@@ -338,7 +333,7 @@ namespace WindBot.Game.AI.Decks
                 return false;
             }
 
-            ClientCard enemyMon = Util.GetProblematicEnemyMonster();
+            ClientCard enemyMon = Util.GetProblematicEnemyMonster(0, true);
             if (enemyMon != null)
             {
                 // don't use if could wait for N'tss pop to be live
@@ -446,7 +441,7 @@ namespace WindBot.Game.AI.Decks
 
             if (Duel.Phase == DuelPhase.End)
             {
-                ClientCard enemyMon = Util.GetBestEnemyMonster();
+                ClientCard enemyMon = Util.GetBestEnemyMonster(true, true);
                 if (enemyMon != null)
                 {
                     AI.SelectCard(enemyMon);
@@ -505,6 +500,7 @@ namespace WindBot.Game.AI.Decks
             {
                 return true;
             }
+
             IList<ClientCard> lightCards = Enemy.Graveyard.GetMatchingCards(card => card.HasAttribute(CardAttribute.Light));
             if (lightCards.Count > 0)
             {
@@ -520,10 +516,33 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
 
+            IList<ClientCard> fusionCards = Enemy.Graveyard.GetMatchingCards(card => card.HasType(CardType.Fusion));
+            if (fusionCards.Count > 0)
+            {
+                AI.SelectCard(CardId.InvokedTower);
+                AI.SelectMaterials(fusionCards);
+                return true;
+            }
+
             if (Bot.Graveyard.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) > 0)
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(CardLocation.Grave);
+                return true;
+            }
+
+            // don't banish a reserved combo piece for Augoeides
+            int[] reservedBanish =
+            {
+                CardId.ShaddollApkallone,
+                CardId.ShaddollConstruct,
+                CardId.DragmaBastard
+            };
+            IList<ClientCard> selfFusionCards = Bot.Graveyard.GetMatchingCards(card => card.HasType(CardType.Fusion) && !card.IsCode(reservedBanish));
+            if (selfFusionCards.Count > 0)
+            {
+                AI.SelectCard(CardId.InvokedTower);
+                AI.SelectMaterials(selfFusionCards);
                 return true;
             }
 
@@ -628,7 +647,8 @@ namespace WindBot.Game.AI.Decks
                     // discard and fetch with construct
                     AI.SelectNextCard(CardId.ShaddollRuq);
                 }
-                // get hand before adding Ruq, so shouldn't discard 
+                // get hand before adding Ruq, so shouldn't discard
+                // TODO: Refine what not to discard
                 AI.SelectNextCard(Bot.Hand);
                 return true;
             }
@@ -807,7 +827,7 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        // priority 5 - misc send targets
+        // priority 4 - misc send targets
         private bool NtssPop()
         {
             ClientCard bestCard = Util.GetBestEnemyCard(false, true);
@@ -817,6 +837,79 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
             return false;
+        }
+
+        private bool OmegaRecur()
+        {
+            // TODO: Add priority list
+            return true;
+        }
+
+        private bool PegasusSpin()
+        {
+            AI.SelectCard(Util.GetBestEnemyCard(false, true));
+            return true;
+        }
+
+        // priority 5 - niche scenarios
+        private bool BeastEffect()
+        {
+            // draw 1
+            if (Card.Location == CardLocation.Grave)
+            {
+                return true;
+            }
+            // draw 2
+            // TODO: Refine what not to discard
+            return true;
+        }
+
+        private bool ConstructMill()
+        {
+            if (!Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.ShaddollBeast))
+            {
+                AI.SelectCard(CardId.ShaddollBeast);
+                return true;
+            }
+            return false;
+        }
+
+        private bool VenomEff()
+        {
+            // float
+            if (Card.Location == CardLocation.Grave)
+            {
+                return true;
+            }
+
+            AI.SelectCard(Util.GetBestEnemyMonster());
+            return true;
+        }
+
+        private bool TowerEff()
+        {
+            int[] reservedBanish =
+            {
+                CardId.ShaddollApkallone,
+                CardId.ShaddollConstruct,
+                CardId.DragmaBastard
+            };
+
+            // buff
+            if (ActivateDescription == Util.GetStringId(CardId.InvokedTower, 0))
+            {
+                // don't banish a reserved combo piece for Augoeides
+                IList<ClientCard> fusionCards = Bot.Graveyard.GetMatchingCards(card => card.HasType(CardType.Fusion) && !card.IsCode(reservedBanish));
+                if (fusionCards.Count > 0)
+                {
+                    AI.SelectCard(fusionCards);
+                    return true;
+                }
+                return false;
+            }
+
+            AI.SelectCard(Util.GetBestEnemyMonster(false, true));
+            return true;
         }
 
         // priority 6 - set backrow
