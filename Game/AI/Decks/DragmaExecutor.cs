@@ -314,14 +314,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             // summon for body at end of main
-            //if (Duel.Player == 1 && (Duel.MainPhase.CanBattlePhase || Duel.MainPhase.CanEndPhase))
-            //{
-            //    AI.SelectCard(Util.GetBestEnemyMonster(true));
-            //    return true;
-            //}
-
-            // in lieu of end of M1, summon in M2
-            if (Duel.Player == 1 && Duel.Phase == DuelPhase.Main2)
+            if (Duel.Player == 1 && Duel.MainPhaseEnd)
             {
                 AI.SelectCard(Util.GetBestEnemyMonster(true));
                 return true;
@@ -519,7 +512,6 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(lightCards);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -527,7 +519,6 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedMechaba);
                 AI.SelectMaterials(CardId.InvokedGardna);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -536,14 +527,12 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedTower);
                 AI.SelectMaterials(fusionCards);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
             if (Bot.Graveyard.GetMatchingCardsCount(card => card.HasAttribute(CardAttribute.Light)) > 0)
             {
                 AI.SelectCard(CardId.InvokedMechaba);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -559,7 +548,6 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedTower);
                 AI.SelectMaterials(selfFusionCards);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
@@ -568,7 +556,6 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectCard(CardId.InvokedCaliga);
                 AI.SelectMaterials(darkCards);
-                AI.SelectMaterials(CardLocation.Grave);
                 return true;
             }
 
