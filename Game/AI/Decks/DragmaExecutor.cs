@@ -289,7 +289,7 @@ namespace WindBot.Game.AI.Decks
                     return true;
                 }
             }
-            if (Enemy.LifePoints - myMonster.Attack < 1000)
+            if (Enemy.LifePoints - myMonster.Attack <= 1000)
             {
                 AI.SelectCard(myMonster);
                 return true;
