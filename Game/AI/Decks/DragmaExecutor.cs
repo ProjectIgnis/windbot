@@ -404,8 +404,6 @@ namespace WindBot.Game.AI.Decks
 
         private bool TalentsEffect()
         {
-            
-
             // take control
             ClientCard enemyMon = Util.GetBestEnemyMonster();
             if (enemyMon != null)
