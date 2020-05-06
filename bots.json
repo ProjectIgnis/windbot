@@ -35,7 +35,7 @@
         "difficulty": 0,
         "masterRules": [3, 4, 5]
     },
-	{
+    {
         "name": "Cyberse",
         "deck": "ST1732",
         "difficulty": 2,
@@ -54,6 +54,12 @@
         "masterRules": [3, 4, 5]
     },
     {
+        "name": "Dragma",
+        "deck": "Dragma",
+        "difficulty": 3,
+        "masterRules": [5]
+    },
+    {
         "name": "Dragun of Red-Eyes",
         "deck": "Dragun",
         "difficulty": 3,
@@ -69,7 +75,7 @@
         "name": "Gren Maju Stun",
         "deck": "GrenMajuThunderBoarder",
         "difficulty": 0,
-        "masterRules": [4, 5]
+        "masterRules": [3, 4, 5]
     },
     {
         "name": "Horus",
@@ -82,6 +88,12 @@
         "deck": "LightswornShaddoldinosour",
         "difficulty": 3,
         "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "Mathmech",
+        "deck": "MathMech",
+        "difficulty": 2,
+        "masterRules": [4, 5]
     },
     {
         "name": "Normal Monster Mash",
@@ -138,6 +150,12 @@
         "masterRules": [4, 5]
     },
     {
+        "name": "Time Thief",
+        "deck": "TimeThief",
+        "difficulty": 2,
+        "masterRules": [4, 5]
+    },
+    {
         "name": "Toadally Awesome",
         "deck": "Toadally Awesome",
         "difficulty": 2,
@@ -146,6 +164,18 @@
     {
         "name": "Trickstar",
         "deck": "Trickstar",
+        "difficulty": 3,
+        "masterRules": [4, 5]
+    },
+    {
+        "name": "Windwitch Gusto",
+        "deck": "PureWinds",
+        "difficulty": 1,
+        "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "Witchcrafter Grass",
+        "deck": "Witchcraft",
         "difficulty": 3,
         "masterRules": [4, 5]
     },

@@ -25,7 +25,7 @@ namespace WindBot.Game
         private Room _room;
         private Duel _duel;
         private int _hand;
-        private bool _debug;        
+        private bool _debug;
         private long _select_hint;
         private GameMessage _lastMessage;
         public class LocationInfo
@@ -61,7 +61,7 @@ namespace WindBot.Game
             Game = game;
             Connection = game.Connection;
             _hand = game.Hand;
-            _debug = game.Debug;           
+            _debug = game.Debug;
             _packets = new Dictionary<StocMessage, Action<BinaryReader>>();
             _messages = new Dictionary<GameMessage, Action<BinaryReader>>();
             RegisterPackets();
@@ -69,8 +69,8 @@ namespace WindBot.Game
             _room = new Room();
             _duel = new Duel();
 
-            _ai = new GameAI(Game, _duel);
-            _ai.Executor = DecksManager.Instantiate(_ai, _duel);
+            _ai = new GameAI(_duel, Game.Dialog, Game.Chat, Game.Log);
+            _ai.Executor = DecksManager.Instantiate(_ai, _duel, Game.Deck);
             Deck = Deck.Load(_ai.Executor.Deck);
 
             _select_hint = 0;
@@ -241,7 +241,7 @@ namespace WindBot.Game
         {
             int type = packet.ReadByte();
             int pos = type & 0xF;
-            if (pos < 0 || pos > 3)
+            if (pos < 0 || pos >= _room.Players)
             {
                 Connection.Close();
                 return;
@@ -265,7 +265,7 @@ namespace WindBot.Game
             int change = packet.ReadByte();
             int pos = (change >> 4) & 0xF;
             int state = change & 0xF;
-            if (pos > 3)
+            if (pos >= _room.Players)
                 return;
             if (state < 8)
             {
@@ -331,7 +331,7 @@ namespace WindBot.Game
 
             //Connection.Close();
         }
-        
+
         private void OnDuelEnd(BinaryReader packet)
         {
             Connection.Close();
@@ -391,6 +391,9 @@ namespace WindBot.Game
                 {
                     _duel.Fields[0].UnderAttack = false;
                     _duel.Fields[1].UnderAttack = false;
+                } else if (data == 23) //Main Phase end
+                {
+                    _duel.MainPhaseEnd = true;
                 }
             }
             if (type == 3) // HINT_SELECTMSG
@@ -565,6 +568,7 @@ namespace WindBot.Game
             {
                 monster.Attacked = false;
             }
+            _duel.MainPhaseEnd = false;
             _select_hint = 0;
             _ai.OnNewPhase();
         }
@@ -575,14 +579,17 @@ namespace WindBot.Game
             int final = _duel.Fields[player].LifePoints - packet.ReadInt32();
             if (final < 0) final = 0;
             if (_debug)
-                Logger.WriteLine("(" + player.ToString() + " got damage , LifePoint left= " + final.ToString() + ")");
+                Logger.WriteLine("(" + player.ToString() + " got damage , LifePoint left = " + final.ToString() + ")");
             _duel.Fields[player].LifePoints = final;
         }
 
         private void OnRecover(BinaryReader packet)
         {
             int player = GetLocalPlayer(packet.ReadByte());
-            _duel.Fields[player].LifePoints += packet.ReadInt32();
+            int final = _duel.Fields[player].LifePoints + packet.ReadInt32();
+            if (_debug)
+                Logger.WriteLine("(" + player.ToString() + " got healed , LifePoint left = " + final.ToString() + ")");
+            _duel.Fields[player].LifePoints = final;
         }
 
         private void OnLpUpdate(BinaryReader packet)
@@ -674,7 +681,7 @@ namespace WindBot.Game
             {
                 if (defendcard == null) Logger.WriteLine("(" + (attackcard.Name ?? "UnKnowCard") + " direct attack!!)");
                 else Logger.WriteLine("(" + info1.controler.ToString() + " 's " + (attackcard.Name ?? "UnKnowCard") + " attack  " + info2.controler.ToString() + " 's " + (defendcard.Name ?? "UnKnowCard") + ")");
-            }                
+            }
             _duel.Fields[attackcard.Controller].BattlingMonster = attackcard;
             _duel.Fields[1 - attackcard.Controller].BattlingMonster = defendcard;
             _duel.Fields[1 - attackcard.Controller].UnderAttack = true;
@@ -718,9 +725,11 @@ namespace WindBot.Game
 
         private void OnChaining(BinaryReader packet)
         {
-            packet.ReadInt32(); // card id
+            int cardId = packet.ReadInt32();
             LocationInfo info = new LocationInfo(packet, _duel.IsFirst);
             ClientCard card = _duel.GetCard(info.controler, info.location, info.sequence, info.position);
+            if (card.Id == 0)
+                card.SetId(cardId);
             int cc = GetLocalPlayer(packet.ReadByte());
             if (_debug)
                 if (card != null) Logger.WriteLine("(" + cc.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " activate effect)");
@@ -735,6 +744,7 @@ namespace WindBot.Game
 
         private void OnChainEnd(BinaryReader packet)
         {
+            _duel.MainPhaseEnd = false;
             _ai.OnChainEnd();
             _duel.LastChainPlayer = -1;
             _duel.CurrentChain.Clear();
@@ -1168,7 +1178,7 @@ namespace WindBot.Game
                 Connection.Send(CtosMessage.Response, 0);
                 return;
             }
-            
+
             if (card.Id == 0)
                 card.SetId(cardId);
 
@@ -1366,7 +1376,7 @@ namespace WindBot.Game
 
             if (max <= 0)
                 max = 99;
-            
+
             IList<ClientCard> mandatoryCards = new List<ClientCard>();
             IList<ClientCard> cards = new List<ClientCard>();
 
