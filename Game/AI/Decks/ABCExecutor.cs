@@ -24,14 +24,14 @@ namespace WindBot.Game.AI.Decks
             public const int PhotonOrbital = 89132148;
             public const int PhotonVanisher = 43147039;
             public const int HeavyMechSupportArmor = 39890958;
-            public const int AshBlossomJoyousSpring = 14558128;
+            public const int AshBlossomAndJoyousSpring = 14558128;
 
-            public const int ReinaforcmentOfTheArmy = 32807846;
+            public const int ReinforcementOfTheArmy = 32807846;
             public const int Terraforming = 73628505;
-            public const int MalefactorsCommand = 12524259;
+            public const int UnauthorizedReactivation = 12524259;
             public const int CalledbyTheGrave = 24224830;
             public const int CrossOutDesignator = 65681983;
-            public const int UnionHanger = 66399653;
+            public const int UnionHangar = 66399653;
             public const int InfiniteImpermanence = 10045474;
             public const int SolemnStrike = 40605147;
 
@@ -41,7 +41,7 @@ namespace WindBot.Game.AI.Decks
             public const int CyberDragonNova = 58069384;
             public const int CrystronHalqifibrax = 50588353;
             public const int UnionCarrier = 83152482;
-            public const int IPMasquerina = 65741786;
+            public const int IPMasquerena = 65741786;
             public const int CrusadiaAvramax = 21887175;
             public const int ApollousaBOG = 4280258;
             public const int KnightmareUnicorn = 38342335;
@@ -54,7 +54,7 @@ namespace WindBot.Game.AI.Decks
         {
             //#1 Interactions
             AddExecutor(ExecutorType.Activate, CardId.ApollousaBOG, ApollousaNegate);
-            AddExecutor(ExecutorType.Activate, CardId.AshBlossomJoyousSpring, DefaultAshBlossomAndJoyousSpring);
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossomAndJoyousSpring, DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.CalledbyTheGrave, DefaultCalledByTheGrave);
             AddExecutor(ExecutorType.Activate, CardId.InfiniteImpermanence, DefaultInfiniteImpermanence);
             AddExecutor(ExecutorType.Activate, CardId.SolemnStrike, DefaultSolemnStrike);
@@ -63,20 +63,20 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityNegate);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonInfinity, CyberDragonInfinityAttach);
             AddExecutor(ExecutorType.Activate, CardId.CyberDragonNova, CyberDragonNovaFloat);
-            AddExecutor(ExecutorType.Activate, CardId.IPMasquerina, IPMasquerinaEffect);
+            AddExecutor(ExecutorType.Activate, CardId.IPMasquerena, IPMasquerenaEffect);
             AddExecutor(ExecutorType.Activate, CardId.ABCDragonBuster, ABCBanish);
             AddExecutor(ExecutorType.Activate, CardId.ABCDragonBuster, ABCUnionSummon);
 
             //#2 1st Searches, Equips and Photon summons
-            AddExecutor(ExecutorType.Activate, CardId.UnionHanger, UnionHangerActivate);
-            AddExecutor(ExecutorType.Activate, CardId.UnionHanger, UnionHangerEquip);
+            AddExecutor(ExecutorType.Activate, CardId.ReinforcementOfTheArmy, ROTAEffect);
+            AddExecutor(ExecutorType.Activate, CardId.UnionHangar, UnionHangarActivate);
+            AddExecutor(ExecutorType.Activate, CardId.UnionHangar, UnionHangarEquip);
             AddExecutor(ExecutorType.SpSummon, CardId.PhotonThrasher, PhotonThrasherSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.PhotonVanisher, PhotonVanisherSummon);
             AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEquip);
             AddExecutor(ExecutorType.Activate, CardId.PhotonOrbital, PhotonOrbitalEffect);
-            AddExecutor(ExecutorType.Activate, CardId.ReinaforcmentOfTheArmy, ROTAEffect);
             AddExecutor(ExecutorType.Activate, CardId.Terraforming, TerraformingEffect);
-            AddExecutor(ExecutorType.Activate, CardId.MalefactorsCommand, MalefactorsCommandEffect);
+            AddExecutor(ExecutorType.Activate, CardId.UnauthorizedReactivation, UnauthorizedReactivationEffect);
             AddExecutor(ExecutorType.Activate, CardId.UnionDriver, UnionDriverEffect);
 
             //#3 Monster sets
@@ -111,7 +111,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.ApollousaBOG, ApollousaSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.CrusadiaAvramax, CrusadiaAvramaxSummon);
             AddExecutor(ExecutorType.Activate, CardId.CrusadiaAvramax, CrusadiaAvramaxEffect);
-            AddExecutor(ExecutorType.SpSummon, CardId.IPMasquerina, IPMasquerinaSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.IPMasquerena, IPMasquerenaSummon);
             AddExecutor(ExecutorType.SpSummon, CardId.ABCDragonBuster, ABCDragonBusterSummon);
 
             //#7 Unions Effects
@@ -134,8 +134,8 @@ namespace WindBot.Game.AI.Decks
 
 
         }
-        private bool UnionHangerActivated = false;
-        private bool UnionHangerEquiped = false;
+        private bool UnionHangarActivated = false;
+        private bool UnionHangarEquipped = false;
         private bool UnionDriverUsed = false;
         private bool PhotonOrbitalUsed = false;
         private bool GalaxySoldierUsed = false;
@@ -153,8 +153,8 @@ namespace WindBot.Game.AI.Decks
 
         public override void OnNewTurn()
         {
-            UnionHangerActivated = false;
-            UnionHangerEquiped = false;
+            UnionHangarActivated = false;
+            UnionHangarEquipped = false;
             UnionDriverUsed = false;
             PhotonOrbitalUsed = false;
             GalaxySoldierUsed = false;
@@ -208,9 +208,9 @@ namespace WindBot.Game.AI.Decks
             {
                 87602890,   //Zaborg, The Mega Monarch
                 95679145,   //Maximus Dragma
-                82734805,   //Infernoid Tierraa
-                86062400,   //XYZ avenger
-                63737050,   //Rye Okami
+                82734805,   //Infernoid Tierra
+                86062400,   //Xyz Avenger
+                63737050,   //Ryu Okami
 
             };
             if (Util.GetLastChainCard() != null && Util.GetLastChainCard().IsCode(extradecksend) && Duel.LastChainPlayer != 0)
@@ -224,7 +224,7 @@ namespace WindBot.Game.AI.Decks
                 {
                     list.Add(CardId.ABCDragonBuster);
                     list.Add(CardId.CrusadiaAvramax);
-                    list.Add(CardId.IPMasquerina);
+                    list.Add(CardId.IPMasquerena);
                     list.Add(CardId.KnightmareCerberus);
                     list.Add(CardId.KnightmarePhoenix);
                     list.Add(CardId.KnightmareUnicorn);
@@ -316,9 +316,9 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectAnnounceID(CardId.InfiniteImpermanence);
                     return true;
                 }
-                if (LastChainCard.IsCode(CardId.AshBlossomJoyousSpring))
+                if (LastChainCard.IsCode(CardId.AshBlossomAndJoyousSpring))
                 {
-                    AI.SelectAnnounceID(CardId.AshBlossomJoyousSpring);
+                    AI.SelectAnnounceID(CardId.AshBlossomAndJoyousSpring);
                     return true;
                 }
                 if (LastChainCard.IsCode(CardId.CalledbyTheGrave))
@@ -364,12 +364,12 @@ namespace WindBot.Game.AI.Decks
             }
             if (Duel.LastChainPlayer == 0 || !ABCBanishUsed)
             {
-                if (LastChainCard != null && LastChainCard.IsCode(CardId.IPMasquerina) && Util.ChainContainsCard(MonsterMassRemoval))
+                if (LastChainCard != null && LastChainCard.IsCode(CardId.IPMasquerena) && Util.ChainContainsCard(MonsterMassRemoval))
                 {
                     ABCUnionSummonUsed = true;
                     return true;
                 }
-                if (LastChainCard != null && LastChainCard.IsCode(MonsterMassRemoval) && !LastChainCard.IsCode(15693423) && !Bot.HasInMonstersZone(CardId.IPMasquerina, notDisabled: true))
+                if (LastChainCard != null && LastChainCard.IsCode(MonsterMassRemoval) && !LastChainCard.IsCode(15693423) && !Bot.HasInMonstersZone(CardId.IPMasquerena, notDisabled: true))
                 {
                     ABCUnionSummonUsed = true;
                     return true;
@@ -438,14 +438,14 @@ namespace WindBot.Game.AI.Decks
                 74586817,   //PSY-Framelord Omega
             };
             ClientCard LastChainCard = Util.GetLastChainCard();
-            if (LastChainCard.IsCode(57774843) && ActivateDescription == Util.GetStringId(57774843, 1))
-                return false;   //JudgementDragon
+            if (LastChainCard.IsCode(57774843) && (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2))
+                return false;   //Judgment Dragon
             if (LastChainCard.IsCode(423585) && ActivateDescription == Util.GetStringId(423585, 0))
-                return false;   //SummonerMonk
+                return false;   //Summoner Monk
             if (LastChainCard.IsCode(43218406) && (LastChainCard.Location == CardLocation.MonsterZone))
-                return false;   //WaterGizmek
+                return false;   //Water Gizmek
             if (LastChainCard.HasSetcode(0x11e) && (LastChainCard.Location == CardLocation.Hand))
-                return false;   //Danger
+                return false;   //Danger!
             if (LastChainCard.IsCode(Blacklist))
                 return false;
             return true;
@@ -542,7 +542,6 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-
         private bool KnightmarePhoenixEffect()
         {
             ClientCard target = Util.GetBestEnemySpell();
@@ -560,7 +559,6 @@ namespace WindBot.Game.AI.Decks
             AI.SelectNextCard(target);
             return true;
         }
-
 
         private bool KnightmareCerberusEffect()
         {
@@ -580,7 +578,6 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-
         private bool KnightmareUnicornEffect()
         {
             ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
@@ -599,7 +596,6 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-
         private bool ROTAEffect()
         {
             if (Bot.HasInHandOrHasInMonstersZone(CardId.PhotonThrasher))
@@ -614,18 +610,17 @@ namespace WindBot.Game.AI.Decks
 
         private bool TerraformingEffect()
         {
-            if (UnionHangerActivated)
+            if (UnionHangarActivated)
                 return false;
-            AI.SelectCard(CardId.UnionHanger);
+            AI.SelectCard(CardId.UnionHangar);
             return true;
         }
 
-
-        private bool UnionHangerActivate()
+        private bool UnionHangarActivate()
         {
-            if (ActivateDescription != Util.GetStringId(CardId.UnionHanger, 0))
+            if (ActivateDescription != Util.GetStringId(CardId.UnionHangar, 0))
                 return false;
-            if (UnionHangerActivated)
+            if (UnionHangarActivated)
                 return false;
             if (Bot.HasInGraveyard(ABCUnion) && !NormalSummonUsed && Duel.Player == 0)
                 AI.SelectCard(CardId.HeavyMechSupportArmor);
@@ -633,25 +628,24 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.CCrushWyvern);
             else
                 AI.SelectCard(CardId.BBusterDrake);
-            UnionHangerActivated = true;
+            UnionHangarActivated = true;
             return true;
         }
 
         //TODO: add when to equip other abc instead
-        private bool UnionHangerEquip()
+        private bool UnionHangarEquip()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.UnionHanger, 0))
+            if (ActivateDescription == Util.GetStringId(CardId.UnionHangar, 0))
                 return false;
-            if (UnionHangerEquiped)
+            if (UnionHangarEquipped)
                 return false;
             if (Duel.Player == 1)
                 AI.SelectCard(ABCUnion);
             if (!ABCUnionSummonUsed && !UnionDriverUsed && Duel.Player == 0)
                 AI.SelectCard(CardId.UnionDriver);
-            UnionHangerEquiped = true;
+            UnionHangarEquipped = true;
             return true;
         }
-
 
         private bool PhotonThrasherSummon()
         {
@@ -660,14 +654,13 @@ namespace WindBot.Game.AI.Decks
                 CardId.AAssaultCore,
                 CardId.BBusterDrake,
                 CardId.CCrushWyvern,
-                CardId.UnionHanger,
+                CardId.UnionHangar,
                 CardId.Terraforming,
             };
             if (!Bot.HasInHand(cards) && Bot.HasInHand(CardId.GalaxySoldier))
                 return false;
             return true;
         }
-
 
         private bool PhotonVanisherSummon()
         {
@@ -678,7 +671,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.CCrushWyvern,
                 CardId.PhotonThrasher,
             };
-            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) >= 2 || Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) == 0 || Bot.HasInMonstersZone(CardId.IPMasquerina))
+            if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) >= 2 || Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(mats)) == 0 || Bot.HasInMonstersZone(CardId.IPMasquerena))
                 return false;
             return true;
         }
@@ -692,7 +685,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool HMSArmorSummon()
         {
-            if (!Bot.HasInHandOrInGraveyard(ABCUnion) && !Bot.HasInHand(CardId.GalaxySoldier) && (Bot.HasInMonstersZone(CardId.PhotonThrasher) || Bot.HasInHand(CardId.MalefactorsCommand) || Bot.HasInSpellZone(CardId.UnionHanger, notDisabled: true)))
+            if (!Bot.HasInHandOrInGraveyard(ABCUnion) && !Bot.HasInHand(CardId.GalaxySoldier) && (Bot.HasInMonstersZone(CardId.PhotonThrasher) || Bot.HasInHand(CardId.UnauthorizedReactivation) || Bot.HasInSpellZone(CardId.UnionHangar, notDisabled: true)))
             {
                 NormalSummonUsed = true;
                 return true;
@@ -727,14 +720,12 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-
-
-        private bool MalefactorsCommandEffect()
+        private bool UnauthorizedReactivationEffect()
         {
             //TODO: add when to equip other abc instead
             if (Duel.LastChainPlayer == 0)
                 return false;
-            if (!UnionDriverUsed && !Bot.HasInHandOrInSpellZone(CardId.UnionHanger))
+            if (!UnionDriverUsed && !Bot.HasInHandOrInSpellZone(CardId.UnionHangar))
             {
                 AI.SelectCard(CardLocation.MonsterZone);
                 AI.SelectNextCard(CardId.UnionDriver);
@@ -752,7 +743,6 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
-
 
         //NOTE: needs even better logic
         private bool UnionDriverEffect()
@@ -773,7 +763,6 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
 
-        
         private bool UnionSpSummon()
         {
             if (Card.Location == CardLocation.SpellZone)
@@ -796,7 +785,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.UnionDriver,
                 CardId.GalaxySoldier,
             };
-            //NOTE: need to allow them if they are equiped by effects other than union driver
+            //NOTE: need to allow them if they are Equipped by effects other than union driver
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2)
             {
                 AI.SelectMaterials(materials);
@@ -809,7 +798,7 @@ namespace WindBot.Game.AI.Decks
         private bool CrusadiaAvramaxSummon()
         {
             int[] materials = new[] {
-                CardId.IPMasquerina,
+                CardId.IPMasquerena,
                 CardId.UnionCarrier,
                 CardId.KnightmareCerberus,
                 CardId.KnightmarePhoenix,
@@ -859,14 +848,15 @@ namespace WindBot.Game.AI.Decks
                 CardId.CCrushWyvern,
                 CardId.BBusterDrake,
                 CardId.AAssaultCore,
-                CardId.IPMasquerina,
+                CardId.IPMasquerena,
+                CardId.UnionCarrier,
                 CardId.PhotonThrasher,
                 CardId.PhotonVanisher,
                 CardId.GalaxySoldier,
                 CardId.UnionDriver,
                 CardId.HeavyMechSupportArmor,
             };
-            if ((Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 3 && Bot.HasInMonstersZone(CardId.IPMasquerina)) || Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 4)//Needs to check for different names?
+            if ((Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 3 && Bot.HasInMonstersZone(CardId.IPMasquerena)) || Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 4)//Needs to check for different names?
             {
                 AI.SelectMaterials(materials);
                 return true;
@@ -874,7 +864,7 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        private bool IPMasquerinaSummon()
+        private bool IPMasquerenaSummon()
         {
             if (!UnionCarrierSummonTurn && Duel.Turn == 1)
                 return false;
@@ -896,16 +886,16 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-        private bool IPMasquerinaEffect()
+        private bool IPMasquerenaEffect()
         {
             int[] materials1 = new[] {
                 CardId.CCrushWyvern,
                 CardId.BBusterDrake,
                 CardId.AAssaultCore,
-                CardId.IPMasquerina,
+                CardId.IPMasquerena,
             };
             int[] materials2 = new[] {
-                CardId.IPMasquerina,
+                CardId.IPMasquerena,
                 CardId.UnionCarrier,
                 CardId.KnightmareCerberus,
                 CardId.KnightmarePhoenix,
@@ -982,7 +972,7 @@ namespace WindBot.Game.AI.Decks
                 AI.SelectCard(CardId.HeavyMechSupportArmor);
                 return true;
             }
-            if (Bot.HasInMonstersZone(CardId.IPMasquerina) && (!Bot.HasInHand(CardId.GalaxySoldier) || GalaxySoldierUsed))
+            if (Bot.HasInMonstersZone(CardId.IPMasquerena) && (!Bot.HasInHand(CardId.GalaxySoldier) || GalaxySoldierUsed))
             {
                 if (Bot.Graveyard.GetCardCount(CardId.CCrushWyvern) >= 2)
                 {
@@ -1086,7 +1076,6 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
-
         private bool UnionCarrierEffect()
         {
             if (Bot.HasInMonstersZone(CardId.CyberDragonInfinity))
@@ -1186,7 +1175,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool MonsterSet()
         {
-            if (!Bot.HasInHandOrInSpellZone(CardId.UnionHanger) && !Bot.HasInHand(CardId.MalefactorsCommand) && !Bot.HasInHand(CardId.GalaxySoldier) && Bot.GetMonsterCount() == 0 && (Duel.Turn == 1 || (Duel.Turn != 1 && Enemy.GetMonsterCount() >= 1)))
+            if (!Bot.HasInHandOrInSpellZone(CardId.UnionHangar) && !Bot.HasInHand(CardId.UnauthorizedReactivation) && !Bot.HasInHand(CardId.GalaxySoldier) && Bot.GetMonsterCount() == 0 && (Duel.Turn == 1 || (Duel.Turn != 1 && Enemy.GetMonsterCount() >= 1)))
                 return true;
             return false;
         }
@@ -1202,7 +1191,6 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
-
 
         private bool MonsterRepos()
         {
