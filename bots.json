@@ -6,6 +6,12 @@
         "masterRules": [4, 5]
     },
     {
+        "name": "Blackwing",
+        "deck": "Blackwing",
+        "difficulty": 3,
+        "masterRules": [4, 5]
+    },
+    {
         "name": "ABC-Dragon Buster",
         "deck": "ABC",
         "difficulty": 3,
@@ -36,6 +42,18 @@
         "masterRules": [3, 4, 5]
     },
     {
+        "name": "CyberDragon",
+        "deck": "CyberDragon",
+        "difficulty": 0,
+        "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "Nekroz",
+        "deck": "Nekroz",
+        "difficulty": 0,
+        "masterRules": [3, 4, 5]
+    },
+    {
         "name": "Cyberse",
         "deck": "ST1732",
         "difficulty": 2,
@@ -50,6 +68,12 @@
     {
         "name": "Dragunity",
         "deck": "Dragunity",
+        "difficulty": 2,
+        "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "Evilswarm",
+        "deck": "Evilswarm",
         "difficulty": 2,
         "masterRules": [3, 4, 5]
     },
@@ -70,6 +94,18 @@
         "deck": "Frog",
         "difficulty": 1,
         "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "Phantasm",
+        "deck": "Phantasm",
+        "difficulty": 1,
+        "masterRules": [3, 4, 5]
+    },
+    {
+        "name":"Gravekeeper",
+        "deck":"Gravekeeper",
+        "difficulty":3,
+        "masterRules":[3,4,5]
     },
     {
         "name": "Gren Maju Stun",
@@ -104,6 +140,12 @@
     {
         "name": "Normal Monster Mash II",
         "deck": "MokeyMokeyKing",
+        "difficulty": 1,
+        "masterRules": [3, 4, 5]
+    },
+    {
+        "name": "OldSchool",
+        "deck": "OldSchool",
         "difficulty": 1,
         "masterRules": [3, 4, 5]
     },
