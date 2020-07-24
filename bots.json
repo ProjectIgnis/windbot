@@ -192,6 +192,12 @@
         "masterRules": [3, 4, 5]
     },
     {
+        "name": "Zefra Control",
+        "deck": "ZefraControl",
+        "difficulty": 2,
+        "masterRules": [3, 4, 5]
+    },
+    {
         "name": "Zoodiac",
         "deck": "Zoodiac",
         "difficulty": 3,
