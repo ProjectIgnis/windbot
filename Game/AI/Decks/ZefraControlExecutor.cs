@@ -49,7 +49,7 @@ namespace WindBot.Game.AI.Decks
             public const int PhotonStrike = 92661479;
             public const int Sheridan = 32302078;
             public const int VampiricDragon = 93713837;
-            public const int ConstellarDiamond = 9272381;
+            public const int TrueKingVFD = 88581108;
             public const int DracoMasterOfTenyi = 23935886;
             public const int PsyframelordLambda = 8802510;
         }
@@ -103,7 +103,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.GhostOgre, DefaultGhostOgreAndSnowRabbit);
             AddExecutor(ExecutorType.Activate, CardId.ZefraDivineStrike, ActivateZefraDivineStrike);
 
-
+            AddExecutor(ExecutorType.Activate, CardId.TrueKingVFD, TrueKingStun);
 
             //search field spell
             AddExecutor(ExecutorType.Activate, CardId.Terraforming, TerraformingEffect);
@@ -129,6 +129,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.Crocodragon, SynchroCrocodragon);
             AddExecutor(ExecutorType.SpSummon, CardId.Enterblathnir, SummonEnteblethnir);
             AddExecutor(ExecutorType.SpSummon, CardId.PsyframelordLambda, LinkSummonLambda);
+            AddExecutor(ExecutorType.SpSummon, CardId.TrueKingVFD, VFDSummon);
             AddExecutor(ExecutorType.SpSummon, CheckPendulumSummon);
             //AddExecutor(ExecutorType.SpSummon,CardId.Crocodragon,SynchroCrocodragon);
 
@@ -150,6 +151,12 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
+        private bool VFDSummon() {
+            if (Duel.Turn == 1) {
+                return true;
+            }
+            return false;
+        }
         private bool GizmekKakuSummon() {
             if (Bot.HasInHand(CardId.GizmekKaku)) {
                 return true;
@@ -164,7 +171,16 @@ namespace WindBot.Game.AI.Decks
         }
         // blind negate
         private bool ActivateZefraDivineStrike() {
-            return true;
+            if (Duel.LastChainPlayer == 1) {
+                return true;
+            }
+            return false;
+        }
+        private bool TrueKingStun() {
+            if (Duel.Player == 1 && Duel.Phase == DuelPhase.Standby) {
+                return true;
+            }
+            return false;
         }
         private bool SetDivineStrike() {
             if (Duel.Phase == DuelPhase.Main2 || Duel.Turn==1) {
@@ -188,7 +204,7 @@ namespace WindBot.Game.AI.Decks
             const long HINTMSG_XMATERIAL = 513;
             const long HINTMSG_LMATERIAL = 533;
             const long HINTMSG_SPSUMMON = 509;
-            if (hint == HINTMSG_SPSUMMON)
+            if (hint == HINTMSG_SPSUMMON)//this also TRUE if we activate gamma
             {
                 IList<ClientCard> selected = new List<ClientCard>();
                 if (cards.Count > 0 && cards[0].Location == CardLocation.Extra) { //pendulum summon from extra deck
@@ -215,6 +231,16 @@ namespace WindBot.Game.AI.Decks
         {
             if (cardId == CardId.Zefraniu || cardId==CardId.Zefrathuban) {
                 return CardPosition.FaceUpDefence;
+            }
+            if (cardId == CardId.TrueKingVFD) {
+                if (Duel.Turn == 1)
+                {
+                    // play around lightning storm
+                    return CardPosition.FaceUpDefence;
+                }
+                else {
+                    return CardPosition.FaceUpAttack;
+                }
             }
             return base.OnSelectPosition(cardId, positions);
         }
@@ -288,7 +314,11 @@ namespace WindBot.Game.AI.Decks
         // always use gamma if able
         private bool GammaEffect()
         {
-            return true;
+            if (Duel.LastChainPlayer == 1)
+            {
+                return true;
+            }
+            return false;
         }
         private bool PutLowScale() {
             return true;
@@ -310,6 +340,9 @@ namespace WindBot.Game.AI.Decks
         private bool ZefraathDump() {
             if (Bot.HasInSpellZone(CardId.Zefraath))
             {
+                if (Card.Location == CardLocation.Hand) {
+                    return false;
+                }
                 if (!Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHand(LowScale)) {
                     AI.SelectCard(CardId.Zefraniu);
                 }
@@ -405,7 +438,7 @@ namespace WindBot.Game.AI.Decks
         }
         public override bool OnSelectHand()
         {
-            return false;
+            return true;
         }
     }
 }
