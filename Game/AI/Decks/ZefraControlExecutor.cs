@@ -6,7 +6,7 @@ using YGOSharp.OCGWrapper.Enums;
 using WindBot;
 using WindBot.Game;
 using WindBot.Game.AI;
-
+using System.Net;
 
 namespace WindBot.Game.AI.Decks
 {
@@ -82,6 +82,18 @@ namespace WindBot.Game.AI.Decks
             CardId.ZefraDivineStrike,
             CardId.ZefraWar,
         };
+        private readonly int[] SelfZefraWarTarget = {
+            CardId.Zefraniu,
+            CardId.Zefrawendi,
+            CardId.Zefraxciton,
+            CardId.Zefrathuban,
+            CardId.OracleZefra,
+            CardId.Zefraath,
+        };
+        private readonly int[] Level3Tuners = {
+            CardId.GhostOgre,
+            CardId.AshBlossom,
+        };
         private bool OracleActivated = false;
         private bool NormalSummonUsed = false;
         private bool ProvidenceActivated = false;
@@ -102,6 +114,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.AshBlossom, DefaultAshBlossomAndJoyousSpring);
             AddExecutor(ExecutorType.Activate, CardId.GhostOgre, DefaultGhostOgreAndSnowRabbit);
             AddExecutor(ExecutorType.Activate, CardId.ZefraDivineStrike, ActivateZefraDivineStrike);
+            AddExecutor(ExecutorType.Activate, CardId.ZefraWar, ActivateZefraWar);
 
             AddExecutor(ExecutorType.Activate, CardId.TrueKingVFD, TrueKingStun);
 
@@ -111,6 +124,10 @@ namespace WindBot.Game.AI.Decks
 
             //set trap except war
             AddExecutor(ExecutorType.SpellSet, CardId.ZefraDivineStrike, SetDivineStrike);
+            AddExecutor(ExecutorType.SpellSet, CardId.NinePilalrs, SetNinePIllar);
+
+            //set zefra war if only 1 zefra card in pendulum scale
+            AddExecutor(ExecutorType.SpellSet, CardId.ZefraWar, SetZefraWar);
 
             // try to complete our scale
             AddExecutor(ExecutorType.Activate, CardId.OracleZefra, OracleActivate);
@@ -120,6 +137,16 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Crocodragon,CrocoDragonTrigger);
             AddExecutor(ExecutorType.Activate, CardId.OracleZefra,OracleTrigger);
 
+
+            //normal summon our tuner to either access crocodragon or stardust charge warrior
+            for (int i1 = 0; i1 < Level3Tuners.Length; i1++)
+            {
+                int i = Level3Tuners[i1];
+                AddExecutor(ExecutorType.Summon, i, ShouldNormalSummonHandtrap);
+            }
+            AddExecutor(ExecutorType.Activate, CardId.FairyTailLuna, FairyTailLunaSearch);
+            AddExecutor(ExecutorType.Activate, CardId.FairyTailLuna, FairyTailLunaBounce);
+
             //special summon kaku
             AddExecutor(ExecutorType.Activate, CardId.GizmekKaku,GizmekKakuSummon);
 
@@ -127,18 +154,102 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Zefrathuban);
             AddExecutor(ExecutorType.Activate, CardId.Zefraxi,ZefraxiToTuner);
             AddExecutor(ExecutorType.SpSummon, CardId.Crocodragon, SynchroCrocodragon);
+
+            // some special summoning move 
             AddExecutor(ExecutorType.SpSummon, CardId.Enterblathnir, SummonEnteblethnir);
             AddExecutor(ExecutorType.SpSummon, CardId.PsyframelordLambda, LinkSummonLambda);
             AddExecutor(ExecutorType.SpSummon, CardId.TrueKingVFD, VFDSummon);
+            AddExecutor(ExecutorType.Summon, CardId.FairyTailLuna);
+            AddExecutor(ExecutorType.Repos, MonsterRepos);
             AddExecutor(ExecutorType.SpSummon, CheckPendulumSummon);
+            
             //AddExecutor(ExecutorType.SpSummon,CardId.Crocodragon,SynchroCrocodragon);
 
             //AddExecutor(ExecutorType.Activate, CardId.Zefraath, ZefraathActivate);
 
         }
 
+        private bool MonsterRepos()
+        {
+            if (Card.IsFacedown())
+                return true;
+            return DefaultMonsterRepos();
+        }
+
         private bool LinkSummonLambda() {
             if (Bot.HasInMonstersZone(CardId.PsyFrameGamma) && Bot.HasInMonstersZone(CardId.PsyFrameDriver)) {
+                return true;
+            }
+            return false;
+        }
+        private bool HasLv6NonTunerMonster(List<ClientCard> monsterOnField) {
+            List<ClientCard> lv6Monster = new List<ClientCard>();
+            for (int i = 0; i < monsterOnField.Count; i++) {
+                if (!monsterOnField[i].IsTuner() && monsterOnField[i].Level == 6) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        private bool ActivateZefraWar() {
+            ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
+            if (target.IsSpell() || target.IsTrap()) {
+                if (!target.HasType(CardType.Continuous) &&
+                    !target.HasType(CardType.Field) &&
+                    !target.HasType(CardType.Pendulum))
+                {
+                    return false;
+                }
+            }
+            if (target == null) {
+                return false;
+            }
+            AI.SelectCard(target);
+
+            AI.SelectCard(SelfZefraWarTarget);
+            return true;
+        }
+        private bool HasLv3NonTunerMonster(List<ClientCard> monsterOnField)
+        {
+            List<ClientCard> lv6Monster = new List<ClientCard>();
+            for (int i = 0; i < monsterOnField.Count; i++)
+            {
+                if (!monsterOnField[i].IsTuner() && monsterOnField[i].Level == 3)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        private bool HasTunerOnField(List<ClientCard> monsterOnField) {
+            List<ClientCard> lv6Monster = new List<ClientCard>();
+            for (int i = 0; i < monsterOnField.Count; i++)
+            {
+                if (monsterOnField[i].IsTuner() )
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private bool FairyTailLunaSearch() {
+            if (ActivateDescription == Util.GetStringId(CardId.Crocodragon, 0))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private bool SetNinePIllar() {
+            return true;
+        }
+        private bool ShouldNormalSummonHandtrap() {
+            List<ClientCard> monsterOnField = Bot.GetMonsters();
+            if (!HasTunerOnField(monsterOnField) && (
+                    (HasLv6NonTunerMonster(monsterOnField) && Bot.HasInExtra(CardId.Crocodragon))
+                    || (HasLv3NonTunerMonster(monsterOnField) && Bot.HasInExtra(CardId.StardustChargeWarrior)))) {
                 return true;
             }
             return false;
@@ -163,11 +274,65 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
+        private static ClientCard GetExtraDisruptibleDeckMonster(List<ClientCard> monsterlist) {
+            ClientCard result = null;
+            for (int i = 0; i < monsterlist.Count; i++) {
+                ClientCard temp = monsterlist[i];
+                if (temp.IsShouldNotBeTarget()) {
+                    continue;
+                }
+                if (temp.HasType(CardType.Xyz)|| temp.HasType(CardType.Synchro)||temp.HasType(CardType.Fusion)) {
+                    return temp;
+                }
+                if (temp.HasType(CardType.Link) && temp.LinkCount >= 2) {
+                    return temp;
+                }
+            }
+            return result;
+        }
+        private bool FairyTailLunaBounce() {
+            if (ActivateDescription == Util.GetStringId(CardId.Crocodragon, 1))
+            {
+                ClientCard result = GetExtraDisruptibleDeckMonster(Util.Enemy.GetMonsters());
+                if (result == null) {
+                    return false;
+                }
+                AI.SelectCard(result.Alias);
+            }
+            return false;
+        }
         private bool SummonEnteblethnir() {
             if (Duel.Turn==1) {
                 return false;
             }
             return false;
+        }
+        public override int OnSelectOption(IList<long> options)
+        {
+            if (Card.Alias == CardId.TrueKingVFD) {
+                for (int i = 0; i < options.Count; i++) {
+                }
+            }
+            return base.OnSelectOption(options);
+        }
+        private bool SetZefraWar() {
+            List<ClientCard> spellOnZone = Bot.GetSpells();
+            int zefraCount = 0;
+            List<int> zefraCards = new List<int>{
+                CardId.Zefraath,
+                CardId.Zefraniu,
+                CardId.Zefraxi,
+                CardId.Zefrathuban,
+                CardId.Zefraxciton,
+                CardId.ZefraPath,
+                CardId.Zefrawendi,
+            };
+            for (int i = 0; i < spellOnZone.Count; i++) {
+                if (zefraCards.Contains(spellOnZone[i].Alias)) {
+                    zefraCount++;
+                }
+            }
+            return zefraCount<2;
         }
         // blind negate
         private bool ActivateZefraDivineStrike() {
@@ -176,8 +341,10 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
-        private bool TrueKingStun() {
+        
+        private bool TrueKingStun()  {
             if (Duel.Player == 1 && Duel.Phase == DuelPhase.Standby) {
+                AI.SelectAttribute(CardAttribute.Dark);// Select DARK as default
                 return true;
             }
             return false;
@@ -269,7 +436,12 @@ namespace WindBot.Game.AI.Decks
         }
         private bool SynchroCrocodragon() {
             if (Bot.HasInMonstersZone(CardId.Zefraniu) && Bot.HasInMonstersZone(CardId.Zefraxi)) {
-                Bot.MonsterZone.GetMonsters();
+                //Bot.MonsterZone.GetMonsters();
+                return true;
+            }
+            if (Bot.HasInMonstersZone(CardId.Zefraniu) && Bot.HasInMonstersZone(Level3Tuners))
+            {
+                //Bot.MonsterZone.GetMonsters();
                 return true;
             }
             //AI.SelectMaterials();
@@ -343,19 +515,30 @@ namespace WindBot.Game.AI.Decks
                 if (Card.Location == CardLocation.Hand) {
                     return false;
                 }
-                if (!Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHand(LowScale)) {
+                if (!Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(LowScale)) {
                     AI.SelectCard(CardId.Zefraniu);
-                }
-                if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHand(LowScale)) {
+                }else if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(LowScale)) {
                     AI.SelectCard(HighScaleNoZeraniu);
-                }
-                if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHand(LowScale))
+                }else if (!Bot.HasInHand(CardId.Zefraxi) && Bot.HasInHandOrInSpellZone(LowScale))
                 {
-                    AI.SelectCard(HighScaleNoZeraniu);
-                }
-                if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHand(HighScale))
+                    AI.SelectCard(CardId.Zefraniu);
+                }else if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(HighScale))
                 {
-                    AI.SelectCard(HighScaleNoZeraniu);
+                    if (Bot.HasInSpellZone(HighScale))
+                    {
+                        AI.SelectCard(LowScale);
+                    }
+                    else {
+                        AI.SelectCard(HighScale);
+                    }
+                    
+                }else if (Bot.HasInHand(CardId.Zefraxi) && Bot.HasInHand(CardId.Zefraniu)) {
+                    if (Bot.HasInHand(LowScaleNoZeraxi)) {
+                        AI.SelectCard(HighScaleNoZeraniu);
+                    }else if (Bot.HasInHand(HighScaleNoZeraniu))
+                    {
+                        AI.SelectCard(LowScaleNoZeraxi);
+                    }
                 }
                 return true;
             }
@@ -410,7 +593,7 @@ namespace WindBot.Game.AI.Decks
             if (OracleActivated)
                 return false;
             OracleActivated = true;
-            if (!Bot.HasInHand(CardId.Zefraath)) {
+            if (!Bot.HasInHand(CardId.Zefraath) && !Bot.HasInSpellZone(CardId.Zefraath)) {
                 AI.SelectCard(CardId.Zefraath);
                 return true;
             }
