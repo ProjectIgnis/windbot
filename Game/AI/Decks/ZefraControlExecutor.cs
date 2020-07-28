@@ -134,6 +134,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Zefraath, ZefraathActivate);
             AddExecutor(ExecutorType.Activate, CardId.Zefraath, ZefraathDump);
             AddExecutor(ExecutorType.Activate, CardId.Zefraniu, ZefraniuSearch);
+            //we put synchro summon here so we can stack our card then draw it, it also chain block ash
             AddExecutor(ExecutorType.Activate, CardId.Crocodragon,CrocoDragonTrigger);
             AddExecutor(ExecutorType.Activate, CardId.OracleZefra,OracleTrigger);
 
@@ -151,9 +152,13 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.GizmekKaku,GizmekKakuSummon);
 
             // putting low scale prioritize non zefraxi card
-            AddExecutor(ExecutorType.Activate, CardId.Zefrathuban);
+            AddExecutor(ExecutorType.Activate, CardId.Zefrathuban, ScaleZefrathuban);
             AddExecutor(ExecutorType.Activate, CardId.Zefraxi,ZefraxiToTuner);
             AddExecutor(ExecutorType.SpSummon, CardId.Crocodragon, SynchroCrocodragon);
+
+            //if there are no lowscale we must make do with high scale, add non zefraniu card first
+            AddExecutor(ExecutorType.Activate, CardId.Zefraxciton,ScaleZefraxciton);
+
 
             // some special summoning move 
             AddExecutor(ExecutorType.SpSummon, CardId.Enterblathnir, SummonEnteblethnir);
@@ -174,6 +179,19 @@ namespace WindBot.Game.AI.Decks
             if (Card.IsFacedown())
                 return true;
             return DefaultMonsterRepos();
+        }
+        private bool ScaleZefraxciton() {
+            if (Card.Location == CardLocation.Hand)
+            {
+                return true;
+            }
+            return false;
+        }
+        private bool ScaleZefrathuban() {
+            if (Card.Location == CardLocation.Hand) {
+                return true;
+            }
+            return false;
         }
 
         private bool LinkSummonLambda() {
@@ -235,7 +253,7 @@ namespace WindBot.Game.AI.Decks
         }
 
         private bool FairyTailLunaSearch() {
-            if (ActivateDescription == Util.GetStringId(CardId.Crocodragon, 0))
+            if (ActivateDescription == Util.GetStringId(CardId.FairyTailLuna, 0))
             {
                 return true;
             }
@@ -263,8 +281,14 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
         private bool VFDSummon() {
-            if (Duel.Turn == 1) {
+            if (Duel.Turn == 1)
+            {
                 return true;
+            }
+            else {
+                if (Duel.Turn == 2 && Duel.Phase == DuelPhase.Main2) {
+                    return true;
+                }
             }
             return false;
         }
@@ -291,13 +315,28 @@ namespace WindBot.Game.AI.Decks
             return result;
         }
         private bool FairyTailLunaBounce() {
-            if (ActivateDescription == Util.GetStringId(CardId.Crocodragon, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.FairyTailLuna, 1))
             {
-                ClientCard result = GetExtraDisruptibleDeckMonster(Util.Enemy.GetMonsters());
-                if (result == null) {
-                    return false;
+                if (Duel.Phase == DuelPhase.BattleStart)
+                {
+                    ClientCard result = Util.GetProblematicEnemyMonster(canBeTarget : true);
+                    if (result == null)
+                    {
+                        return false;
+                    }
+                    AI.SelectCard(result.Alias);
+                    return true;
                 }
-                AI.SelectCard(result.Alias);
+                else {
+                    ClientCard result = GetExtraDisruptibleDeckMonster(Util.Enemy.GetMonsters());
+                    if (result == null)
+                    {
+                        return false;
+                    }
+                    AI.SelectCard(result.Alias);
+                    return true;
+                }
+                
             }
             return false;
         }
@@ -468,6 +507,9 @@ namespace WindBot.Game.AI.Decks
             return true;
         }
         private bool ZefraniuSearch() {
+            if (Card.Location == CardLocation.Hand) {
+                return false;
+            }
             if (!ProvidenceActivated)
             {
                 AI.SelectCard(CardId.ZefraProvidence);
@@ -519,9 +561,13 @@ namespace WindBot.Game.AI.Decks
                     AI.SelectCard(CardId.Zefraniu);
                 }else if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(LowScale)) {
                     AI.SelectCard(HighScaleNoZeraniu);
-                }else if (!Bot.HasInHand(CardId.Zefraxi) && Bot.HasInHandOrInSpellZone(LowScale))
+                }
+                if (Bot.HasInHand(CardId.Zefraniu) && !Bot.HasInHandOrInSpellZone(LowScale))
                 {
-                    AI.SelectCard(CardId.Zefraniu);
+                    AI.SelectCard(CardId.Zefraxi);
+                }
+                else if (!Bot.HasInHand(CardId.Zefraxi) && Bot.HasInHandOrInSpellZone(LowScale)) {
+                    AI.SelectCard(CardId.Zefraniu);                        
                 }else if (Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(HighScale))
                 {
                     if (Bot.HasInSpellZone(HighScale))
@@ -612,7 +658,7 @@ namespace WindBot.Game.AI.Decks
             }
             if (!Bot.HasInHand(HighScaleNoZeraniu) && Bot.HasInHand(CardId.Zefraniu))
             {
-                AI.SelectCard(HighScale);
+                AI.SelectCard(HighScaleNoZeraniu);
                 return true;
             }
             AI.SelectCard(LowScaleNoZeraxi);
