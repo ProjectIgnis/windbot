@@ -211,6 +211,9 @@ namespace WindBot.Game.AI.Decks
         }
         
         private bool ActivateZefraWar() {
+            if (!Bot.HasInGraveyard(CardId.ZefraProvidence)) {
+                return false;
+            }
             ClientCard target = Util.GetBestEnemyCard(canBeTarget: true);
             if (target.IsSpell() || target.IsTrap()) {
                 if (!target.HasType(CardType.Continuous) &&
@@ -253,7 +256,9 @@ namespace WindBot.Game.AI.Decks
         }
 
         private bool FairyTailLunaSearch() {
-            if (ActivateDescription == Util.GetStringId(CardId.FairyTailLuna, 0))
+            const long hack_code = 62205969853120512;
+            //if (ActivateDescription == Util.GetStringId(CardId.FairyTailLuna, 0))
+            if (ActivateDescription == hack_code)
             {
                 return true;
             }
@@ -275,7 +280,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool CheckPendulumSummon() {
             if (!PendulumSummoned) {
-                PendulumSummoned = true;
+                //PendulumSummoned = true;
                 return true;
             }
             return false;
@@ -426,6 +431,11 @@ namespace WindBot.Game.AI.Decks
                 if (selected.Count == 0) {
                     selected.Add(cards[cards.Count - 1]);
                 }
+                if (cards[0].Alias != CardId.PsyFrameDriver)
+                {
+                    PendulumSummoned = true;
+                }
+                
                 return selected;
             } else if (hint == HINTMSG_LMATERIAL) {
 
@@ -493,16 +503,24 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
         private bool OracleTrigger() {
-            if (Bot.HasInMonstersZone(CardId.Crocodragon)) {
-                if (Bot.GetRemainingCount(CardId.GizmekKaku, 1)>0) {
+            if (Bot.HasInMonstersZone(CardId.Crocodragon))
+            {
+                if (Bot.GetRemainingCount(CardId.GizmekKaku, 1) > 0)
+                {
                     AI.SelectCard(CardId.GizmekKaku);
                     return true;
                 }
-                if (Bot.GetRemainingCount(CardId.AshBlossom, 1) > 0) {
-                    AI.SelectCard(CardId.AshBlossom);
-                    return true;
-                }
-                
+                AI.SelectCard(Level3Tuners);
+                return true;
+            }
+            else if (Bot.HasInMonstersZone(CardId.StardustChargeWarrior))
+            {
+                AI.SelectCard(Level3Tuners);
+                return true;
+            }
+            else if (Bot.HasInMonstersZone(CardId.MetaphysHorus)) {
+                AI.SelectCard(CardId.ZefraProvidence);
+                return true;
             }
             return true;
         }
@@ -592,6 +610,7 @@ namespace WindBot.Game.AI.Decks
             
         }
         private bool ZefraProvidence() {
+            //out first turn pendulum completition
             if (Bot.HasInMonstersZone(CardId.Zefraniu)) {
                 if (Bot.HasInMonstersZone(CardId.Zefraxi))
                 {
@@ -631,8 +650,24 @@ namespace WindBot.Game.AI.Decks
                 ProvidenceActivated = true;
                 return true;
             }
+
+            if (OpponentsHasSetCard()) {
+                AI.SelectCard(CardId.Zefraxciton);
+            }
             AI.SelectCard(BackRowSearchPriority);
             return true;
+        }
+        private bool CardIsFaceDown(ClientCard c) {
+            return c.HasPosition(CardPosition.FaceDown);
+        }
+        private bool OpponentsHasSetCard() {
+            ClientCard result = Enemy.GetMonstersInMainZone().GetFirstMatchingCard(CardIsFaceDown);
+            if (result != null) {
+                return true;
+            }
+            result = Enemy.GetSpells().GetFirstMatchingCard(CardIsFaceDown);
+            return result != null;
+
         }
         private bool OracleActivate()
         {
