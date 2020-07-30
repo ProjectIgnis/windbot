@@ -98,12 +98,14 @@ namespace WindBot.Game.AI.Decks
         private bool NormalSummonUsed = false;
         private bool ProvidenceActivated = false;
         private bool PendulumSummoned = false;
+        private bool UsedGamma = false;
 
         public override void OnNewTurn() {
             OracleActivated = false;
             NormalSummonUsed = false;
             ProvidenceActivated = false;
             PendulumSummoned = false;
+            UsedGamma = false;
         }
         public ZefraControlExecutor(GameAI ai, Duel duel) : base(ai, duel)
         {
@@ -431,7 +433,7 @@ namespace WindBot.Game.AI.Decks
                 if (selected.Count == 0) {
                     selected.Add(cards[cards.Count - 1]);
                 }
-                if (cards[0].Alias != CardId.PsyFrameDriver)
+                if (!UsedGamma)
                 {
                     PendulumSummoned = true;
                 }
@@ -503,6 +505,9 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
         private bool OracleTrigger() {
+            if (ActivateDescription == Util.GetStringId(CardId.OracleZefra, 1)) {
+
+            }
             if (Bot.HasInMonstersZone(CardId.Crocodragon))
             {
                 if (Bot.GetRemainingCount(CardId.GizmekKaku, 1) > 0)
@@ -548,6 +553,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Duel.LastChainPlayer == 1)
             {
+                UsedGamma = true;
                 return true;
             }
             return false;
@@ -567,12 +573,22 @@ namespace WindBot.Game.AI.Decks
             if (Bot.HasInSpellZone(CardId.Zefraath)){
                 return false;
             }
+            if (Bot.HasInSpellZone(LowScale) || Bot.HasInSpellZone(HighScale)) {
+                return true;
+            }
+            if (!Bot.HasInHand(LowScale) && !Bot.HasInHand(HighScale))
+            {
+                return false;
+            }
             return true;
         }
         private bool ZefraathDump() {
             if (Bot.HasInSpellZone(CardId.Zefraath))
             {
                 if (Card.Location == CardLocation.Hand) {
+                    return false;
+                }
+                if (!Bot.HasInHand(LowScale) && !Bot.HasInHand(HighScale) && !Bot.HasInSpellZone(HighScale) && !Bot.HasInSpellZone(LowScale)) {                    
                     return false;
                 }
                 if (!Bot.HasInHand(CardId.Zefraniu) && Bot.HasInHandOrInSpellZone(LowScale)) {
@@ -694,6 +710,10 @@ namespace WindBot.Game.AI.Decks
             if (!Bot.HasInHand(HighScaleNoZeraniu) && Bot.HasInHand(CardId.Zefraniu))
             {
                 AI.SelectCard(HighScaleNoZeraniu);
+                return true;
+            }
+            if (Bot.HasInSpellZone(CardId.Zefraath) && !Bot.HasInHand(LowScale)) {
+                AI.SelectCard(LowScale);
                 return true;
             }
             AI.SelectCard(LowScaleNoZeraxi);
