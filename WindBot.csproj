@@ -124,6 +124,7 @@
     <Compile Include="YGOSharp.Network\NetworkServer.cs" />
     <Compile Include="YGOSharp.Network\Utils\BinaryExtensions.cs" />
     <Compile Include="YGOSharp.Network\YGOClient.cs" />
+    <Compile Include="Game\AI\Decks\RushSpellcasterExecutor.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -214,5 +214,11 @@
         "deck": "Zoodiac",
         "difficulty": 3,
         "masterRules": [3, 4, 5]
+    },
+    {
+    	"name": "Sevens Road",
+    	"deck": "RushSpellcaster",
+    	"difficulty": 3,
+    	"masterRules": [7]
     }
 ]
