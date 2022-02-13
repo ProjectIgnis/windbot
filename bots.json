@@ -219,12 +219,12 @@
         "name": "[Healing JAM]",
         "deck": "[HealingJAM]",
         "difficulty": 2,
-        "masterRules": []
+        "masterRules": [ 7 ]
     },
     {
         "name": "[Imaginary Ark]",
         "deck": "[ImaginaryArk]",
         "difficulty": 2,
-        "masterRules": []
+        "masterRules": [ 7 ]
     }
 ]
