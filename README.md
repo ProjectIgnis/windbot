@@ -20,21 +20,25 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 * Dark Magician
 * Dragma
 * Dragunity
-* Dragun of Red-Eyes
 * Frog
 * Gren Maju Stun
 * Horus
+* Imaginary Actor
 * Lightsworn Shaddoll Dino
 * Mathmech
 * Normal Monster Mash
 * Normal Monster Mash II
 * Orcust
+* Phantom Knights
+* Psychic
 * Qliphort
 * R5NK
 * Rainbow
+* Red-Eyes Dark Dragoon
 * Rose Scrap Synchro
 * Salamangreat
 * Sky Striker
+* Swordsoul
 * Time Thief
 * Toadally Awesome
 * Trickstar
