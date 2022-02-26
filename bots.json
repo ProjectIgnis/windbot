@@ -54,12 +54,6 @@
         "masterRules": [ 5 ]
     },
     {
-        "name": "Dragun of Red-Eyes",
-        "deck": "Dragun",
-        "difficulty": 3,
-        "masterRules": [ 4, 5 ]
-    },
-    {
         "name": "Dragunity",
         "deck": "Dragunity",
         "difficulty": 2,
@@ -132,6 +126,12 @@
         "masterRules": [ 4, 5 ]
     },
     {
+        "name": "Phantom Knights",
+        "deck": "PK",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
         "name": "Qliphort",
         "deck": "Qliphort",
         "difficulty": 0,
@@ -148,6 +148,12 @@
         "deck": "Rainbow",
         "difficulty": 2,
         "masterRules": [ 3, 4, 5 ]
+    },
+    {
+        "name": "Red-Eyes Dark Dragoon",
+        "deck": "Dragun",
+        "difficulty": 3,
+        "masterRules": [ 4, 5 ]
     },
     {
         "name": "Rose Scrap Synchro",
