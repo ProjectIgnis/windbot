@@ -23,15 +23,15 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 * Dragun of Red-Eyes
 * Frog
 * Gren Maju Stun
+* Healing JAM
 * Horus
-* Imaginary Actor
+* Imaginary Ark
 * Lightsworn Shaddoll Dino
 * Mathmech
 * Normal Monster Mash
 * Normal Monster Mash II
 * Orcust
 * Phantom Knights
-* Psychic
 * Qliphort
 * R5NK
 * Rainbow
