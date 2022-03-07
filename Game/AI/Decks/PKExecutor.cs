@@ -52,7 +52,7 @@ namespace WindBot.Game.AI.Decks
             public const int CalledBy = 24224830;
             public const int ReinforcementOfTheArmy = 32807846;
             public const int DarkRulerNoMore = 54693926; //Not used. Replaced by Forbidden Chalice.
-            public const int FoolishBurial = 81439173;
+            public const int FoolishBurial = 81439174;
             public const int PotOfProsperity = 84211599; //Not used. Replaced for more extenders.
             public const int HarpiesFeatherDuster = 18144506; //Not used. Replaced by Imperial Order.
             public const int ForbiddenChalice = 25789292; //Not used.
@@ -101,11 +101,12 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Kagemucha, SpecialSummon);
             AddExecutor(ExecutorType.Activate, CardId.TourGuide, TourGuideEffect);
             AddExecutor(ExecutorType.Summon, CardId.TornScales, NormalSummon);
-            AddExecutor(ExecutorType.Activate, CardId.Wheeleder, SpecialSummon);
-            AddExecutor(ExecutorType.Activate, CardId.Tracker, SpecialSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.Wheeleder, SpecialSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.Tracker, SpecialSummon);
             AddExecutor(ExecutorType.Activate, CardId.EmergencyTeleport, TeleportEffect);
             AddExecutor(ExecutorType.SpellSet, CardId.ShadeBrigandine);
             AddExecutor(ExecutorType.Activate, CardId.ShadeBrigandine, SpecialSummon);
+            AddExecutor(ExecutorType.Activate, CardId.FoolishBurial, BurialEffect);
             AddExecutor(ExecutorType.Activate, CardId.TornScales, ScalesEffect);
             AddExecutor(ExecutorType.Activate, CardId.AncientCloak, CloakEffect);
             AddExecutor(ExecutorType.Activate, CardId.StainedGreaves, SpecialSummon);
@@ -122,7 +123,6 @@ namespace WindBot.Game.AI.Decks
             //Apollousa Setup
             AddExecutor(ExecutorType.Activate, CardId.Tsuchinoko, DangerSummon);
             AddExecutor(ExecutorType.Activate, CardId.Jackalope, DangerSummon);
-            AddExecutor(ExecutorType.Activate, CardId.FoolishBurial, BurialEffect);
             AddExecutor(ExecutorType.Activate, CardId.RaggedGloves, GlovesEffect);
             AddExecutor(ExecutorType.Activate, CardId.RustyBardiche, BardicheEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.SilentBoots, BootsSummon);
@@ -151,18 +151,23 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.SpSummon, CardId.Borrelsword, BorrelSummon);
             AddExecutor(ExecutorType.Activate, CardId.Borrelsword, BorrelEffect);
             AddExecutor(ExecutorType.Summon, CardId.SilentBoots, NormalSummon);
-            AddExecutor(ExecutorType.MonsterSet, CardId.Kagemucha, KageSummon);
-            AddExecutor(ExecutorType.MonsterSet, CardId.Wheeleder, PsychicSummon);
-            AddExecutor(ExecutorType.MonsterSet, CardId.Tracker, PsychicSummon);
-            AddExecutor(ExecutorType.Summon, CardId.AshBlossom, AshSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Wheeleder, NormalSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Tracker, NormalSummon);
+            AddExecutor(ExecutorType.Summon, CardId.Kagemucha, NormalSummon);
+            AddExecutor(ExecutorType.Summon, CardId.AshBlossom, NormalSummon);
             AddExecutor(ExecutorType.MonsterSet, CardId.DarkMagician, DoNotSummon);
             AddExecutor(ExecutorType.MonsterSet, CardId.RedEyesDragon, DoNotSummon);
             AddExecutor(ExecutorType.Activate, CardId.Dante, DanteEffect);
             //Floodgates
             AddExecutor(ExecutorType.Activate, CardId.ImperialOrder, ImperialEffect);
             AddExecutor(ExecutorType.Activate, CardId.Fragrance, FragranceEffect);
-            //Failsafes
-            AddExecutor(ExecutorType.SpellSet);
+            //Sets
+            AddExecutor(ExecutorType.SpellSet, CardId.ImperialOrder);
+            AddExecutor(ExecutorType.SpellSet, CardId.FogBlade);
+            AddExecutor(ExecutorType.SpellSet, CardId.Wing);
+            AddExecutor(ExecutorType.SpellSet, CardId.Fragrance);
+            AddExecutor(ExecutorType.SpellSet, CardId.Impermanence);
+            AddExecutor(ExecutorType.SpellSet, CardId.CalledBy);
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
             /* AddExecutor(ExecutorType.MonsterSet, CardId.TornScales, NormalSet);
             AddExecutor(ExecutorType.MonsterSet, CardId.AncientCloak, NormalSet);
@@ -349,10 +354,23 @@ namespace WindBot.Game.AI.Decks
         private bool TourGuideEffect()
         {
             if (MaxxCUsed == true) return false;
-            AI.SelectCard(new[] {
+            if ((Bot.GetRemainingCount(CardId.Cir, 1) == 1))
+                AI.SelectCard(new[] {
                 CardId.Graff,
                 CardId.Cir,
-                CardId.TourGuide
+                CardId.TourGuide,
+        });
+            else if ((Bot.GetRemainingCount(CardId.Cir, 1) == 0) && (Bot.HasInGraveyard(CardId.Cherubini) || Bot.HasInGraveyard(CardId.Graff)))
+                AI.SelectCard(new[] {
+                CardId.Cir,
+                CardId.TourGuide,
+                CardId.Graff,
+        });
+            else
+                AI.SelectCard(new[] {
+                CardId.TourGuide,
+                CardId.Graff,
+                CardId.Cir,
         });
             return true;
         }
@@ -371,24 +389,6 @@ namespace WindBot.Game.AI.Decks
             if (MaxxCUsed == true) return false;
             if (Bot.GetHandCount() == 1) return false;
             return true;
-        }
-        private bool KageSummon()
-        {
-            if (MaxxCUsed == true) return false;
-            if (Bot.HasInHand(CardId.Wheeleder) || Bot.HasInHand(CardId.Tracker)) return true;
-            else return false;
-        }
-        private bool AshSummon()
-        {
-            if (MaxxCUsed == true) return false;
-            if (Bot.HasInHand(CardId.Wheeleder) || Bot.HasInHand(CardId.Tracker) || Bot.HasInHand(CardId.Kagemucha)) return true;
-            else return false;
-        }
-        private bool PsychicSummon()
-        {
-            if (MaxxCUsed == true) return false;
-            if (Bot.HasInHand(CardId.Kagemucha)) return true;
-            else return false;
         }
         private bool GraffEffect()
         {
@@ -431,7 +431,7 @@ namespace WindBot.Game.AI.Decks
         private bool SpecialSummon()
         {
             if (MaxxCUsed == true) return false;
-            return true;
+            else return true;
         }
         private bool GreavesEffect()
         {
@@ -571,6 +571,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.Jackalope,
                 CardId.Unicorn,
             };
+            if (Enemy.HasInMonstersZone(33746252)) return false; //Majesty's Fiend
             if (Enemy.HasInSpellZone(82732705) || Enemy.HasInSpellZone(76375976)) return false; //Skill Drain & Mystic Mine
             if (Bot.GetMonsterCount() == 2 || ((Bot.GetMonsterCount() == 3) && (Bot.HasInMonstersZone(CardId.RustyBardiche)))) return false;
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) >= 2)
@@ -589,7 +590,7 @@ namespace WindBot.Game.AI.Decks
                         if (link_count >= 4) break;
                     }
                 }
-                if (link_count >= 3)
+                if (link_count == 3)
                 {
                     AI.SelectMaterials(materials2);
                     return true;
@@ -729,7 +730,7 @@ namespace WindBot.Game.AI.Decks
                 CardId.BreakSword,
             });
             }
-            return false;
+            return true;
         }
         private bool WingEffect()
         {
@@ -742,15 +743,13 @@ namespace WindBot.Game.AI.Decks
                 CardId.StainedGreaves,
                 CardId.AncientCloak,
                 CardId.RaggedGloves,
-                CardId.TornScales,
             });
             if (Card.Location != CardLocation.Grave)
                 {
-                    if (Bot.GetFieldCount() == 0) return false;
                     ClientCard target = Util.GetBestBotMonster();
                     if (target == null)
                         return false;
-                    AI.SelectCard(target);
+                    else AI.SelectCard(target);
                     return true;
                 }
             }
@@ -1055,7 +1054,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (!Bot.HasInGraveyard(CardId.Impermanence) && !Bot.HasInGraveyard(CardId.Wing) && !Bot.HasInGraveyard(CardId.FogBlade) && !Bot.HasInGraveyard(CardId.ImperialOrder) && !Bot.HasInGraveyard(CardId.Fragrance))
                 AI.SelectCard(CardId.ShadeBrigandine);
-            if (BootsUsed == true)
+            if (BootsUsed == true || Bot.HasInHand(CardId.SilentBoots))
                 AI.SelectCard(CardId.StainedGreaves);
             if (BootsUsed == false)
                 AI.SelectCard(CardId.SilentBoots);
@@ -1258,10 +1257,6 @@ namespace WindBot.Game.AI.Decks
                 CardId.Anaconda,
                 CardId.Isolde,
                 CardId.Cherubini,
-                CardId.OjamaToken,
-                CardId.VassalToken,
-                CardId.PrimalBeingToken,
-                CardId.ShadeBrigandine,
                 CardId.TornScales,
                 CardId.Cherubini,
                 CardId.Cir,
@@ -1372,7 +1367,9 @@ namespace WindBot.Game.AI.Decks
         }
         private bool AnacondaSummon()
         {
+            if (Bot.LifePoints <= 2000) return false;
             if (MaxxCUsed == true) return false;
+            if (Enemy.HasInMonstersZone(33746252)) return false; //Majesty's Fiend
             if (FusionRequirements() == false) return false;
             if (Bot.HasInSpellZone(CardId.RedEyesFusion)) return false;
             int[] materials = new[] {
@@ -1551,18 +1548,23 @@ namespace WindBot.Game.AI.Decks
         }
         private int DiscardCard()
         {
+            //Special Summons
             if (Bot.HasInHand(CardId.Cir) && Bot.HasInGraveyard(CardId.Cherubini) && (DragoonSummoned = false))
                 return CardId.Cir;
-            if (Bot.HasInHand(CardId.EmergencyTeleport) && Bot.HasInGraveyard(CardId.Tracker) && Bot.HasInGraveyard(CardId.Wheeleder))
+            if (Bot.HasInHand(CardId.Graff) && (DragoonSummoned = false) && (Bot.GetRemainingCount(CardId.Cir, 1)) == 1)
+                return CardId.Graff;
+            if (Bot.HasInHand(CardId.Cir) && Bot.HasInGraveyard(CardId.Graff) && (DragoonSummoned = false))
+                return CardId.Cir;
+            //Bricks
+            if (Bot.HasInHand(CardId.EmergencyTeleport) && (Bot.GetRemainingCount(CardId.Tracker, 1)) == 0 && (Bot.GetRemainingCount(CardId.Wheeleder, 1)) == 0)
                 return CardId.EmergencyTeleport;
             if (Bot.HasInHand(CardId.RedEyesDragon) && (FusionRequirements() == false))
                 return CardId.RedEyesDragon;
-            if (Bot.HasInGraveyard(CardId.Wheeleder) && Bot.HasInGraveyard(CardId.Tracker))
-                return CardId.EmergencyTeleport;
             if (Bot.HasInHand(CardId.DarkMagician) && (FusionRequirements() == false))
                 return CardId.DarkMagician;
             if (Bot.HasInHand(CardId.RedEyesFusion) && (FusionRequirements() == false))
                 return CardId.RedEyesFusion;
+            //Activates Effects in GY
             if (Bot.HasInHand(CardId.RaggedGloves))
                 return CardId.RaggedGloves;
             if (Bot.HasInHand(CardId.TornScales) && !Bot.HasInGraveyard(CardId.TornScales))
@@ -1575,6 +1577,7 @@ namespace WindBot.Game.AI.Decks
                 return CardId.Jackalope;
             if (Bot.HasInHand(CardId.Wing))
                 return CardId.Wing;
+            //Extenders
             if (Bot.HasInHand(CardId.DarkMagician))
                 return CardId.DarkMagician;
             if (Bot.HasInHand(CardId.RedEyesDragon))
@@ -1585,6 +1588,7 @@ namespace WindBot.Game.AI.Decks
                 return CardId.Tracker;
             if (Bot.HasInHand(CardId.Kagemucha))
                 return CardId.Kagemucha;
+            //Main Combo Pieces
             if (Bot.HasInHand(CardId.StainedGreaves))
                 return CardId.StainedGreaves;
             if (Bot.HasInHand(CardId.SilentBoots))
