@@ -188,7 +188,7 @@ namespace WindBot.Game.AI.Decks
         private bool MaxxCUsed = false;
         private bool BootsUsed = false;
         private bool BorrelswordUsed = false;
-        private bool DragoonSummoned = false;
+        public bool DragoonSummoned = false;
 
         /*
         public bool MaxxC()
@@ -210,10 +210,6 @@ namespace WindBot.Game.AI.Decks
         private bool NormalSummon()
         {
             return true;
-        }
-        private bool NormalSet()
-        {
-            return !(NormalSummon());
         }
         private bool BootsSummon()
         {
@@ -266,15 +262,15 @@ namespace WindBot.Game.AI.Decks
                 {
                     ClientCard l = Bot.MonsterZone.GetFirstMatchingCard(card => card.Id == CardId.RustyBardiche);
                     int zones = (l?.GetLinkedZones() ?? 0) & available;
-                    if ((zones & Zones.z4) < 0)
+                    if ((zones & Zones.z4) <= 0)
                         return Zones.z4;
-                    if ((zones & Zones.z3) < 0)
+                    if ((zones & Zones.z3) <= 0)
                         return Zones.z3;
-                    if ((zones & Zones.z2) < 0)
+                    if ((zones & Zones.z2) <= 0)
                         return Zones.z2;
-                    if ((zones & Zones.z1) < 0)
+                    if ((zones & Zones.z1) <= 0)
                         return Zones.z1;
-                    if ((zones & Zones.z0) < 0)
+                    if ((zones & Zones.z0) <= 0)
                         return Zones.z0;
                 }
                 if (Card.IsCode(CardId.Cir) || Card.IsCode(CardId.Graff))
@@ -296,15 +292,15 @@ namespace WindBot.Game.AI.Decks
                 {
                     ClientCard l = Enemy.MonsterZone.GetFirstMatchingCard(card => card.Id == 5821478);
                     int zones = (l?.GetLinkedZones() ?? 0) & available;
-                    if ((zones & Zones.z4) < 0)
+                    if ((zones & Zones.z4) <= 0)
                         return Zones.z4;
-                    if ((zones & Zones.z3) < 0)
+                    if ((zones & Zones.z3) <= 0)
                         return Zones.z3;
-                    if ((zones & Zones.z2) < 0)
+                    if ((zones & Zones.z2) <= 0)
                         return Zones.z2;
-                    if ((zones & Zones.z1) < 0)
+                    if ((zones & Zones.z1) <= 0)
                         return Zones.z1;
-                    if ((zones & Zones.z0) < 0)
+                    if ((zones & Zones.z0) <= 0)
                         return Zones.z0;
                 }
             }
@@ -345,8 +341,8 @@ namespace WindBot.Game.AI.Decks
             };
             if (attacker.IsCode(CardId.Borrelsword) && !attacker.IsDisabled() && BorrelswordUsed == false)
             {
-                attacker.RealPower = attacker.RealPower + defender.GetDefensePower() / 2;
-                defender.RealPower = defender.RealPower - defender.GetDefensePower() / 2;
+                attacker.RealPower += defender.GetDefensePower() / 2;
+                defender.RealPower -= defender.GetDefensePower() / 2;
             }
             return base.OnPreBattleBetween(attacker, defender);
         } //Yes, I'm aware this is a very cumbersome and inefficient way to code this. I intend to fix it later.
@@ -531,12 +527,11 @@ namespace WindBot.Game.AI.Decks
             }
             else
             {
-                ClientCard target = null;
+                ClientCard target;
                 target = Util.GetBestEnemyCard(false, true);
                 if (target == null)
                     return false;
                 AI.SelectCard(target);
-                return true;
             }
             return true;
         }
@@ -590,7 +585,7 @@ namespace WindBot.Game.AI.Decks
                         if (link_count >= 4) break;
                     }
                 }
-                if (link_count == 3)
+                if (link_count >= 3)
                 {
                     AI.SelectMaterials(materials2);
                     return true;
@@ -626,6 +621,7 @@ namespace WindBot.Game.AI.Decks
         private bool UnicornSummon()
         {
             if (MaxxCUsed == true) return false;
+            if (Enemy.HasInSpellZone(82732705)) return false; //Skill Drain
             if (Duel.Turn == 1) return false;
             if (Enemy.GetFieldCount() == 0) return false;
             if (Bot.GetHandCount() == 0) return false;
@@ -699,7 +695,7 @@ namespace WindBot.Game.AI.Decks
                 if (target == null)
                     return false;
                 if (Enemy.HasInSpellZone(82732705)) return false; //Skill Drain
-                AI.SelectCard(CardId.BreakSword);
+                AI.SelectCard(Card);
                 AI.SelectNextCard(target);
                 return true;
             }
@@ -734,24 +730,25 @@ namespace WindBot.Game.AI.Decks
         }
         private bool WingEffect()
         {
-            if ((Card.Location == CardLocation.Grave) && (Bot.HasInGraveyard(CardId.RustyBardiche) || Bot.GetMonsterCount() < 2))
+            if ((ActivateDescription == Util.GetStringId(CardId.Wing, 1)) && (Bot.HasInGraveyard(CardId.RustyBardiche) || Bot.GetMonsterCount() < 2))
             {
-                AI.SelectCard(new[] {
+                int[] targets = {
                 CardId.RustyBardiche,
                 CardId.BreakSword,
                 CardId.SilentBoots,
                 CardId.StainedGreaves,
                 CardId.AncientCloak,
                 CardId.RaggedGloves,
-            });
-            if (Card.Location != CardLocation.Grave)
-                {
-                    ClientCard target = Util.GetBestBotMonster();
-                    if (target == null)
-                        return false;
-                    else AI.SelectCard(target);
-                    return true;
-                }
+                };
+                AI.SelectCard(targets);
+            }
+            else
+            {
+                ClientCard target = Util.GetBestBotMonster();
+                if (target == null)
+                    return false;
+                else AI.SelectCard(target);
+                return true;
             }
             return true;
         }
@@ -1192,6 +1189,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ZeusEffect()
         {
+            if (Util.GetLastChainCard() == Card) return false;
             return ((Util.IsOneEnemyBetter()) || (Bot.GetFieldCount() <= Enemy.GetFieldCount()));
         }
 
@@ -1327,25 +1325,12 @@ namespace WindBot.Game.AI.Decks
         {
             if (MaxxCUsed == true) return false;
             int[] materials = new[] {
-                CardId.OjamaToken,
-                CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.TornScales,
-                CardId.Cherubini,
-                CardId.Cir,
-                CardId.Graff,
-                CardId.Wheeleder,
-                CardId.TourGuide,
                 CardId.Kagemucha,
                 CardId.AncientCloak,
-                CardId.Tsuchinoko,
-                CardId.Jackalope,
                 CardId.RaggedGloves,
                 CardId.SilentBoots,
                 CardId.StainedGreaves,
-                CardId.Tracker,
-                CardId.Leviair,
-                CardId.IPMasq,
         };
             if (Bot.MonsterZone.GetMatchingCardsCount(card => card.IsCode(materials)) < 2)
             {
@@ -1370,12 +1355,11 @@ namespace WindBot.Game.AI.Decks
             if (Bot.LifePoints <= 2000) return false;
             if (MaxxCUsed == true) return false;
             if (Enemy.HasInMonstersZone(33746252)) return false; //Majesty's Fiend
+            if (Enemy.HasInSpellZone(82732705)) return false; //Skill Drain
             if (FusionRequirements() == false) return false;
             if (Bot.HasInSpellZone(CardId.RedEyesFusion)) return false;
+            if (Bot.HasInHand(CardId.RedEyesFusion)) return false;
             int[] materials = new[] {
-                CardId.OjamaToken,
-                CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.TornScales,
                 CardId.Cir,
                 CardId.Graff,
