@@ -70,7 +70,6 @@ namespace WindBot.Game.AI.Decks
             //Fodder
             public const int OjamaToken = 29833092; //In case anyone wants to be a comedian.
             public const int VassalToken = 22404676;
-            public const int PrimalBeingToken = 27204312;
         }
 
         public PKExecutor(GameAI ai, Duel duel)
@@ -288,7 +287,7 @@ namespace WindBot.Game.AI.Decks
                     if ((zones & Zones.z0) > 0)
                         return Zones.z0;
                 }
-                if (Enemy.HasInMonstersZone(5821478)) //Topologic Bomber Dragon
+                if (Enemy.HasInMonstersZone(5821478) || Enemy.HasInMonstersZone(72529749)) //Topologic Bomber Dragon & Trisbaena
                 {
                     ClientCard l = Enemy.MonsterZone.GetFirstMatchingCard(card => card.Id == 5821478);
                     int zones = (l?.GetLinkedZones() ?? 0) & available;
@@ -331,7 +330,19 @@ namespace WindBot.Game.AI.Decks
             {
                 return false;
             }
+            else if (defender.HasPosition(CardPosition.FaceDownDefence) && Enemy.HasInSpellZone(28120197)) //Canyon
+            {
+                return false;
+            }
+            else if (Enemy.HasInMonstersZone(23656668) && (defender.Location == CardLocation.Extra)) //Gravity Controller
+            {
+                return false;
+            }
             else if (defender.IsCode(DoNotAttack))
+            {
+                return false;
+            }
+            else if (defender.HasPosition(CardPosition.Defence) && defender.IsCode(52077741) && attacker.Attack >= 1900) //Obnoxious Celtic Guard
             {
                 return false;
             }
@@ -345,7 +356,7 @@ namespace WindBot.Game.AI.Decks
                 defender.RealPower -= defender.GetDefensePower() / 2;
             }
             return base.OnPreBattleBetween(attacker, defender);
-        } //Yes, I'm aware this is a very cumbersome and inefficient way to code this. I intend to fix it later.
+        }
 
         private bool TourGuideEffect()
         {
@@ -541,7 +552,6 @@ namespace WindBot.Game.AI.Decks
             int[] materials = new[] {
                 CardId.OjamaToken,
                 CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.IPMasq,
                 CardId.Isolde,
                 CardId.Cherubini,
@@ -628,7 +638,6 @@ namespace WindBot.Game.AI.Decks
             int[] materials = new[] {
                 CardId.OjamaToken,
                 CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.IPMasq,
                 CardId.Cherubini,
                 CardId.Isolde,
@@ -744,6 +753,7 @@ namespace WindBot.Game.AI.Decks
             }
             else
             {
+                if (Bot.GetMonsterCount() == 0) return false;
                 ClientCard target = Util.GetBestBotMonster();
                 if (target == null)
                     return false;
@@ -770,7 +780,6 @@ namespace WindBot.Game.AI.Decks
             int[] materials = new[] {
                 CardId.OjamaToken,
                 CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.TornScales,
                 CardId.Wheeleder,
                 CardId.TourGuide,
@@ -1066,7 +1075,6 @@ namespace WindBot.Game.AI.Decks
             int[] materials = new[] {
                 CardId.OjamaToken,
                 CardId.VassalToken,
-                CardId.PrimalBeingToken,
                 CardId.IPMasq,
                 CardId.Unicorn,
                 CardId.Isolde,
@@ -1189,8 +1197,8 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ZeusEffect()
         {
-            if (Util.GetLastChainCard() == Card) return false;
-            return ((Util.IsOneEnemyBetter()) || (Bot.GetFieldCount() <= Enemy.GetFieldCount()));
+            if (Util.ChainContainsCard(CardId.Zeus)) return false;
+            return ((Util.IsOneEnemyBetter()) || (Bot.GetFieldCount() < (Enemy.GetFieldCount())));
         }
 
         private bool BurialEffect()
@@ -1319,7 +1327,6 @@ namespace WindBot.Game.AI.Decks
             });
                 return true;
             }
-            // return false; //Banishing cards from the GY first now, but still banishing itself.
         }
         private bool IsoldeSummon()
         {
@@ -1388,6 +1395,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool AnacondaEffect()
         {
+            if (Bot.LifePoints <= 2000) return false;
             if (ActivateDescription == Util.GetStringId(CardId.Anaconda, 0))
                 return false;
             AI.SelectCard(CardId.RedEyesFusion);
