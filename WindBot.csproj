@@ -106,6 +106,7 @@
     <Compile Include="Game\AI\Decks\Rank5Executor.cs" />
     <Compile Include="Game\AI\Decks\SwordsoulExecutor.cs" />
     <Compile Include="Game\AI\Decks\ZoodiacExecutor.cs" />
+    <Compile Include="Game\AI\Decks\BenkeiExecutor.cs" />      
     <Compile Include="Game\AI\Decks\ZexalWeaponsExecutor.cs" />
     <Compile Include="Game\GameBehavior.cs" />
     <Compile Include="Game\GameClient.cs" />
