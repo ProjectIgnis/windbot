@@ -12,15 +12,15 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 ## Available decks and executors
 * ABC
 * Altergeist
+* Ben Kei
 * Blue-Eyes
 * Blue-Eyes Ritual
 * Burn
 * Chain Burn
 * Cyberse
 * Dark Magician
-* Dragma
+* Dogmatika
 * Dragunity
-* Dragun of Red-Eyes
 * Frog
 * Gren Maju Stun
 * Horus
@@ -32,6 +32,7 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 * Qliphort
 * R5NK
 * Rainbow
+* Red-Eyes Dark Dragoon
 * Rose Scrap Synchro
 * Salamangreat
 * Sky Striker
