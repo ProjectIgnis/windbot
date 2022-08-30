@@ -12,6 +12,12 @@
         "masterRules": [ 4, 5 ]
     },
     {
+        "name": "Ben Kei",
+        "deck": "Benkei",
+        "difficulty": 2,
+        "masterRules": [ 3, 4, 5 ]
+    },
+    {
         "name": "Blue-Eyes",
         "deck": "Blue-Eyes",
         "difficulty": 3,
