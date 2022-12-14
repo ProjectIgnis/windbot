@@ -11,7 +11,8 @@ namespace WindBot.Game.AI.Decks
     public class BenkeiExecutor : DefaultExecutor
     {
         public class CardId
-        { public const int WanderingGryphonRider = 2563463;
+        {
+            public const int WanderingGryphonRider = 2563463;
             public const int Fateful = 39568067;
             public const int Enchantress = 30680659;
             public const int Aramesir = 3285551;
@@ -55,9 +56,9 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Summon, CardId.Benkei, WarriorSummon);
             AddExecutor(ExecutorType.Summon, CardId.Mataza, WarriorSummon);
             AddExecutor(ExecutorType.Summon, CardId.Hayabusa, WarriorSummon);
-            AddExecutor(ExecutorType.Activate, CardId.MagePower, WarriorEquip);
-            AddExecutor(ExecutorType.Activate, CardId.AxeDespair, WarriorEquip);
-            AddExecutor(ExecutorType.Activate, CardId.MaskBrutality, WarriorEquip);
+            AddExecutor(ExecutorType.Activate, CardId.MagePower, GenericEquip);
+            AddExecutor(ExecutorType.Activate, CardId.AxeDespair, GenericEquip);
+            AddExecutor(ExecutorType.Activate, CardId.MaskBrutality, GenericEquip);
             AddExecutor(ExecutorType.Activate, CardId.BashingShield, WarriorEquip);
             AddExecutor(ExecutorType.Activate, CardId.Gallatin, WarriorEquip);
             //Adventurer Setup
@@ -158,10 +159,6 @@ namespace WindBot.Game.AI.Decks
                     if (Bot.HasInHandOrInMonstersZoneOrInGraveyard(CardId.Enchantress))
                         AI.SelectNextCard(CardId.Enchantress);
                 }
-                else
-                {
-                    AI.SelectCard(CardId.WanderingGryphonRider);
-                }
                 return true;
             }
         }
@@ -249,7 +246,7 @@ namespace WindBot.Game.AI.Decks
             }
             return false;
         }
-        private bool WarriorEquip()
+        private bool GenericEquip()
         {
             if (Card.Location == CardLocation.SpellZone)
                 return false;
@@ -258,6 +255,19 @@ namespace WindBot.Game.AI.Decks
             if (Bot.GetMonsterCount() > 0)
             {
                 AI.SelectCard(CardId.Benkei, CardId.Mataza, CardId.Hayabusa, CardId.AdventurerToken, CardId.Enchantress);
+                return true;
+            }
+            return false;
+        }
+        private bool WarriorEquip()
+        {
+            if (Card.Location == CardLocation.SpellZone)
+                return false;
+            if (Duel.Turn == 1)
+                return false;
+            if (Bot.GetMonsterCount() > 0)
+            {
+                AI.SelectCard(CardId.Benkei, CardId.Mataza, CardId.Hayabusa);
                 return true;
             }
             return false;
