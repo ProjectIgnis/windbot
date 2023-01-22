@@ -13,7 +13,7 @@ namespace YGOSharp.OCGWrapper
             public int Type;
             public int Level;
             public int Attribute;
-            public int Race;
+            public ulong Race;
             public int Attack;
             public int Defense;
             public int LScale;
@@ -33,7 +33,7 @@ namespace YGOSharp.OCGWrapper
         public int LinkMarker { get; private set; }
 
         public int Attribute { get; private set; }
-        public int Race { get; private set; }
+        public ulong Race { get; private set; }
         public int Attack { get; private set; }
         public int Defense { get; private set; }
 
@@ -81,7 +81,7 @@ namespace YGOSharp.OCGWrapper
             LScale = (levelInfo >> 24) & 0xff;
             RScale = (levelInfo >> 16) & 0xff;
 
-            Race = reader.GetInt32(6);
+            Race = (ulong)reader.GetInt64(6);
             Attribute = reader.GetInt32(7);
             Attack = reader.GetInt32(8);
             Defense = reader.GetInt32(9);

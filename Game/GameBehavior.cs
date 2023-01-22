@@ -1769,7 +1769,7 @@ namespace WindBot.Game
                         case Opcodes.OPCODE_ISRACE:
                             if (stack.Count >= 1)
                             {
-                                int race = (int)stack.Last.Value;
+                                ulong race = (ulong)stack.Last.Value;
                                 stack.RemoveLast();
                                 stack.AddLast(((race & card.Race) != 0) ? 1 : 0);
                             }
@@ -1797,7 +1797,7 @@ namespace WindBot.Game
                         case Opcodes.OPCODE_GETRACE:
                             if (stack.Count >= 1)
                             {
-                                stack.AddLast(card.Race);
+                                stack.AddLast((long)card.Race);
                             }
                             break;
                         case Opcodes.OPCODE_GETATTRIBUTE:
@@ -1838,19 +1838,19 @@ namespace WindBot.Game
             IList<CardRace> races = new List<CardRace>();
             packet.ReadByte(); // player
             int count = packet.ReadByte();
-            int available = packet.ReadInt32();
-            int filter = 0x1;
-            for (int i = 0; i < 23; ++i)
+            ulong available = packet.ReadUInt64();
+            ulong filter = 0x1;
+            for (int i = 0; i < 30; ++i)
             {
                 if ((available & filter) != 0)
                     races.Add((CardRace)filter);
                 filter <<= 1;
             }
             races = _ai.OnAnnounceRace(count, races);
-            int reply = 0;
+            ulong reply = 0;
             for (int i = 0; i < count; ++i)
-                reply += (int)races[i];
-            Connection.Send(CtosMessage.Response, reply);
+                reply |= (ulong)races[i];
+            Connection.Send(CtosMessage.Response, (long)reply);
         }
 
         private void OnRockPaperScissors(BinaryReader packet)
