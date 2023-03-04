@@ -191,6 +191,7 @@
         "difficulty": 2,
         "masterRules": [ 4, 5 ]
     },
+	{
         "name": "Tearlaments",
         "deck": "Tearlaments",
         "difficulty": 3,
