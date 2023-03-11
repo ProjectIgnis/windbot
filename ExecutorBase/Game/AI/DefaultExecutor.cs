@@ -117,6 +117,10 @@ namespace WindBot.Game.AI
             public const int RoyalDecreel = 51452091;
             public const int NaturiaBeast = 33198837;
             public const int AntiSpellFragrance = 58921041;
+            
+            public const int VaylantzWorld_ShinraBansho = 49568943;
+            public const int VaylantzWorld_KonigWissen = 75952542;
+            public const int DivineArsenalAAZEUS_SkyThunder = 90448279;
         }
 
         protected DefaultExecutor(GameAI ai, Duel duel)
@@ -788,7 +792,8 @@ namespace WindBot.Game.AI
                 _CardId.BlackRoseDragon,
                 _CardId.JudgmentDragon,
                 _CardId.TopologicTrisbaena,
-                _CardId.EvenlyMatched
+                _CardId.EvenlyMatched,
+                _CardId.DivineArsenalAAZEUS_SkyThunder
             };
             int[] destroyAllOpponentList =
             {
