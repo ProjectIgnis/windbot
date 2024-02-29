@@ -132,7 +132,7 @@ namespace WindBot.Game.AI
             // Some AI need do something on card's moving
         }
 
-        public virtual IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public virtual IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             // For overriding
             return null;
