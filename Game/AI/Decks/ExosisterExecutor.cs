@@ -182,7 +182,9 @@ namespace WindBot.Game.AI.Decks
         bool kaspitellEffect1Activated = false;
         bool kaspitellEffect3Activated = false;
         bool gibrineEffect1Activated = false;
+        bool gibrineEffect3Activated = false;
         bool asophielEffect1Activated = false;
+        bool asophielEffect3Activated = false;
         bool sakitamaEffect1Activated = false;
         List<int> exosisterTransformEffectList = new List<int>();
         List<int> oncePerTurnEffectActivatedList = new List<int>();
