@@ -182,9 +182,7 @@ namespace WindBot.Game.AI.Decks
         bool kaspitellEffect1Activated = false;
         bool kaspitellEffect3Activated = false;
         bool gibrineEffect1Activated = false;
-        bool gibrineEffect3Activated = false;
         bool asophielEffect1Activated = false;
-        bool asophielEffect3Activated = false;
         bool sakitamaEffect1Activated = false;
         List<int> exosisterTransformEffectList = new List<int>();
         List<int> oncePerTurnEffectActivatedList = new List<int>();
@@ -861,7 +859,7 @@ namespace WindBot.Game.AI.Decks
         /// <summary>
         /// override for exosister's transform
         /// </summary>
-        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             bool beginTransformCheck = false;
             // transform for main monster
@@ -1668,7 +1666,7 @@ namespace WindBot.Game.AI.Decks
             {
                 return false;
             }
-            List<int> checkTransformCode = new List<int>{
+            List<long> checkTransformCode = new List<long>{
                 Util.GetStringId(CardId.ExosisterElis, 1),
                 Util.GetStringId(CardId.ExosisterStella, 1),
                 Util.GetStringId(CardId.ExosisterIrene, 1),

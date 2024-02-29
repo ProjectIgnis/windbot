@@ -123,6 +123,28 @@ namespace WindBot.Game.AI
             public const int DivineArsenalAAZEUS_SkyThunder = 90448279;
         }
 
+        protected class _Setcode
+        {
+            public const int Watt = 0xe;
+            public const int Speedroid = 0x2016;
+            public const int EarthboundImmortal = 0x1021;
+            public const int Naturia = 0x2a;
+            public const int Nordic = 0x42;
+            public const int Harpie = 0x64;
+            public const int Madolche = 0x71;
+            public const int Ghostrick = 0x8d;
+            public const int OddEyes = 0x99;
+            public const int Performapal = 0x9f;
+            public const int BlueEyes = 0xdd;
+            public const int FurHire = 0x114;
+            public const int Altergeist = 0x103;
+            public const int Crusadia = 0x116;
+            public const int Endymion = 0x12a;
+            public const int AncientWarriors = 0x137;
+            public const int RescueACE = 0x18b;
+            public const int VanquishSoul = 0x195;
+        }
+
         protected DefaultExecutor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
@@ -800,6 +822,11 @@ namespace WindBot.Game.AI
                 _CardId.HarpiesFeatherDuster,
                 _CardId.DarkMagicAttack
             };
+            int[] destroyAllOpponentSpellList =
+            {
+                _CardId.HarpiesFeatherDuster,
+                _CardId.DarkMagicAttack
+            };
 
             if (Util.ChainContainsCard(destroyAllList)) return true;
             if (Enemy.HasInSpellZone(destroyAllOpponentList, true)) return true;
@@ -1181,6 +1208,72 @@ namespace WindBot.Game.AI
             }
 
             return Util.IsTurn1OrMain2();
+        }
+
+        /// <summary>
+        /// Always activate
+        /// </summary>
+        protected bool DefaultVaylantzWorld_ShinraBansho()
+        {
+            if (DefaultSpellWillBeNegated()) {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Select enemy's best monster
+        /// </summary>
+        protected bool DefaultVaylantzWorld_KonigWissen()
+        {
+            if (DefaultSpellWillBeNegated()) {
+                return false;
+            }
+
+            List<ClientCard> monsters = Enemy.GetMonsters();
+            if (monsters.Count == 0) {
+                return false;
+            }
+
+            List<ClientCard> targetList = new List<ClientCard>();
+            List<ClientCard> floodgateCards = monsters
+                .Where(card => card?.Data != null && card.IsFloodgate() && card.IsFaceup() && !card.IsShouldNotBeTarget())
+                .OrderByDescending(card => card.Attack).ToList();
+            List<ClientCard> dangerousCards = monsters
+                .Where(card => card?.Data != null && card.IsMonsterDangerous() && card.IsFaceup() && !card.IsShouldNotBeTarget())
+                .OrderByDescending(card => card.Attack).ToList();
+            List<ClientCard> attackOrderedCards = monsters
+                .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && card.IsShouldNotBeTarget())
+                .OrderByDescending(card => card.Attack).ToList();
+
+            targetList.AddRange(floodgateCards);
+            targetList.AddRange(dangerousCards);
+            targetList.AddRange(attackOrderedCards);
+
+            if (targetList?.Count > 0)
+            {
+                AI.SelectCard(targetList);
+                return true;
+            }
+
+            return false;
+        }
+
+        public override void OnReceivingAnnouce(int player, long data)
+        {
+            if (player == 1 && data == Util.GetStringId(_CardId.LightningStorm, 0) || data == Util.GetStringId(_CardId.LightningStorm, 1))
+            {
+                lightningStormOption = (int)(data - Util.GetStringId(_CardId.LightningStorm, 0));
+            }
+
+            base.OnReceivingAnnouce(player, data);
+        }
+
+        public override void OnChainEnd()
+        {
+            lightningStormOption = -1;
+            base.OnChainEnd();
         }
     }
 }

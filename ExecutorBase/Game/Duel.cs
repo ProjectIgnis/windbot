@@ -27,6 +27,8 @@ namespace WindBot.Game
         public IList<ClientCard> SummoningCards { get; set; }
         public IList<ClientCard> LastSummonedCards { get; set; }
         public bool MainPhaseEnd { get; set; }
+        public int SolvingChainIndex { get; set; }
+        public IList<int> NegatedChainIndexList { get; set; }
 
         public Duel()
         {
@@ -206,6 +208,17 @@ namespace WindBot.Game
         public int GetLocalPlayer(int player)
         {
             return IsFirst ? player : 1 - player;
+        }
+
+        public ClientCard GetCurrentSolvingChainCard()
+        {
+            if (SolvingChainIndex == 0 || SolvingChainIndex > CurrentChain.Count) return null;
+            return CurrentChain[SolvingChainIndex - 1];
+        }
+
+        public bool IsCurrentSolvingChainNegated()
+        {
+            return SolvingChainIndex > 0 && NegatedChainIndexList.Contains(SolvingChainIndex);
         }
     }
 }
