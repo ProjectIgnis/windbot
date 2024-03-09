@@ -256,5 +256,11 @@
         "deck": "[ImaginaryArk]",
         "difficulty": 2,
         "masterRules": [ 7 ]
+    },
+	{
+        "name": "Budget Labrynths",
+        "deck": "Budget Labrynths",
+        "difficulty": 2,
+        "masterRules": [ 3, 4, 5 ]
     }
 ]
