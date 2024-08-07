@@ -179,6 +179,9 @@ namespace WindBot
                     string version = HttpUtility.ParseQueryString(RawUrl).Get("version");
                     if (version != null)
                         Info.Version = Int16.Parse(version);
+                    string RoomId = HttpUtility.ParseQueryString(RawUrl).Get("roomid");
+                    if (RoomId != null)
+                        Info.RoomId = Int32.Parse(RoomId);
                     string password = HttpUtility.ParseQueryString(RawUrl).Get("password");
                     if (password != null)
                         Info.HostInfo = password;
