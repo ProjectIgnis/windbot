@@ -96,6 +96,7 @@
     <Compile Include="Game\AI\Decks\YosenjuExecutor.cs" />
     <Compile Include="Game\AI\Decks\ZexalWeaponsExecutor.cs" />
     <Compile Include="Game\AI\Decks\ZoodiacExecutor.cs" />
+    <Compile Include="Game\AI\Decks\BenkeiExecutor.cs" />
     <Compile Include="Game\AI\Decks\[HealingJAMExecutor].cs" />
     <Compile Include="Game\AI\Decks\[ImaginaryArkExecutor].cs" />
     <Compile Include="Game\DecksManager.cs" />
