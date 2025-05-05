@@ -57,6 +57,7 @@
   <ItemGroup>
     <Compile Include="Config.cs" />
     <Compile Include="Game\AI\Deck.cs" />
+    <Compile Include="Game\AI\Decks\FloowandereezeExecutor.cs" />
     <Compile Include="Game\AI\Decks\KashtiraExecutor.cs" />
     <Compile Include="Game\AI\Decks\TearlamentsExecutor.cs" />
     <Compile Include="Game\AI\Decks\ThunderDragonExecutor.cs" />

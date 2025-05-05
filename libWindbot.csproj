@@ -50,6 +50,7 @@
     <Compile Include="Game\AI\Decks\AltergeistExecutor.cs" />
     <Compile Include="Game\AI\Decks\FamiliarPossessedExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlackwingExecutor.cs" />
+    <Compile Include="Game\AI\Decks\FloowandereezeExecutor.cs" />
     <Compile Include="Game\AI\Decks\KashtiraExecutor.cs" />
     <Compile Include="Game\AI\Decks\LuckyExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlueEyesExecutor.cs" />
