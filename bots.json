@@ -72,6 +72,12 @@
         "masterRules": [ 3, 4, 5 ]
     },
     {
+        "name": "Exosister",
+        "deck": "Exosister",
+        "difficulty": 2,
+        "masterRules": [ 3, 4, 5]
+    },
+    {
         "name": "Familiar Possessed",
         "deck": "FamiliarPossessed",
         "difficulty": 0,
