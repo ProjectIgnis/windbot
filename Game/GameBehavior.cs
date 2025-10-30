@@ -736,6 +736,8 @@ namespace WindBot.Game
                         (CardLocation)previous.location + " move to " + (CardLocation)current.location + ")");
                 }
             }
+        
+            _ai.OnMove(card, previous.controler, previous.location, current.controler, current.location);
         }
 
         private void OnSwap(BinaryReader packet)
@@ -814,8 +816,10 @@ namespace WindBot.Game
             if (card.Id == 0)
                 card.SetId(cardId);
             int cc = GetLocalPlayer(packet.ReadByte());
+            int pcl = info.location;
             if (_debug)
-                if (card != null) Logger.WriteLine("(" + cc.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " activate effect)");
+                if (card != null) Logger.WriteLine("(" + cc.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " activate effect from " + (CardLocation)pcl + ")");
+            _duel.LastChainLocation = (CardLocation)pcl;
             _ai.OnChaining(card, cc);
             //_duel.ChainTargets.Clear();
             _duel.ChainTargetOnly.Clear();
@@ -830,8 +834,10 @@ namespace WindBot.Game
             _duel.MainPhaseEnd = false;
             _ai.OnChainEnd();
             _duel.LastChainPlayer = -1;
+            _duel.LastChainLocation = 0;
             _duel.CurrentChain.Clear();
             _duel.ChainTargets.Clear();
+            _duel.LastChainTargets.Clear();
             _duel.ChainTargetOnly.Clear();
         }
 
@@ -948,6 +954,7 @@ namespace WindBot.Game
 
         private void OnBecomeTarget(BinaryReader packet)
         {
+            _duel.LastChainTargets.Clear();
             int count = packet.ReadInt32();
             for (int i = 0; i < count; ++i)
             {
@@ -957,6 +964,7 @@ namespace WindBot.Game
                 if (_debug)
                     Logger.WriteLine("(" + (CardLocation)info.location + " 's " + (card.Name ?? "UnKnowCard") + " become target)");
                 _duel.ChainTargets.Add(card);
+                _duel.LastChainTargets.Add(card);
                 _duel.ChainTargetOnly.Add(card);
             }
         }

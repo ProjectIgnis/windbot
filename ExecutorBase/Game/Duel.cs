@@ -18,13 +18,17 @@ namespace WindBot.Game
         public BattlePhase BattlePhase { get; set; }
 
         public int LastChainPlayer { get; set; }
+        public CardLocation LastChainLocation { get; set; }
         public IList<ClientCard> CurrentChain { get; set; }
         public IList<ClientCard> ChainTargets { get; set; }
+        public IList<ClientCard> LastChainTargets { get; set; }
         public IList<ClientCard> ChainTargetOnly { get; set; }
         public int LastSummonPlayer { get; set; }
         public IList<ClientCard> SummoningCards { get; set; }
         public IList<ClientCard> LastSummonedCards { get; set; }
         public bool MainPhaseEnd { get; set; }
+        public int SolvingChainIndex { get; set; }
+        public IList<int> NegatedChainIndexList { get; set; }
 
         public Duel()
         {
@@ -32,9 +36,11 @@ namespace WindBot.Game
             Fields[0] = new ClientField();
             Fields[1] = new ClientField();
             LastChainPlayer = -1;
+            LastChainLocation = 0;
             MainPhaseEnd = false;
             CurrentChain = new List<ClientCard>();
             ChainTargets = new List<ClientCard>();
+            LastChainTargets = new List<ClientCard>();
             ChainTargetOnly = new List<ClientCard>();
             LastSummonPlayer = -1;
             SummoningCards = new List<ClientCard>();
@@ -202,6 +208,17 @@ namespace WindBot.Game
         public int GetLocalPlayer(int player)
         {
             return IsFirst ? player : 1 - player;
+        }
+
+        public ClientCard GetCurrentSolvingChainCard()
+        {
+            if (SolvingChainIndex == 0 || SolvingChainIndex > CurrentChain.Count) return null;
+            return CurrentChain[SolvingChainIndex - 1];
+        }
+
+        public bool IsCurrentSolvingChainNegated()
+        {
+            return SolvingChainIndex > 0 && NegatedChainIndexList.Contains(SolvingChainIndex);
         }
     }
 }

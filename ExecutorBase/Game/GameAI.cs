@@ -120,6 +120,11 @@ namespace WindBot.Game
             Executor.OnNewPhase();
         }
 
+        public void OnMove(ClientCard card, int previousControler, int previousLocation, int currentControler, int currentLocation)
+        {
+            Executor.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
+        }
+
         /// <summary>
         /// Called when the AI got attack directly.
         /// </summary>
@@ -146,6 +151,16 @@ namespace WindBot.Game
             m_selector.Clear();
             m_selector_pointer = -1;
             Executor.OnChainEnd();
+        }
+
+        /// <summary>
+        /// Called when receiving annouce
+        /// </summary>
+        /// <param name="player">Player who announce.</param>
+        /// <param name="data">Annouced info.</param>
+        public void OnReceivingAnnouce(int player, long data)
+        {
+            Executor.OnReceivingAnnouce(player, data);
         }
 
         /// <summary>
