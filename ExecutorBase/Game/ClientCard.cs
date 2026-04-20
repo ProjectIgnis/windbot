@@ -371,7 +371,7 @@ namespace WindBot.Game
             return ProcCompleted != 0 || !(IsExtraCard() || HasType(CardType.Ritual) || HasType(CardType.SpSummon));
         }
 
-        public bool IsCode(int id)
+        public bool IsCode(long id)
         {
             return Id == id || Alias != 0 && Alias == id;
         }
