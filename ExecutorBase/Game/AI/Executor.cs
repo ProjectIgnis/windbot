@@ -108,12 +108,12 @@ namespace WindBot.Game.AI
             // For overriding
         }
 
-        public virtual void OnReceivingAnnouce(int player, int data)
+        public virtual void OnReceivingAnnouce(int player, long data)
         {
             // For overriding
         }
 
-        public virtual void OnPlayerHint(int player, int hintType, int description)
+        public virtual void OnPlayerHint(int player, long hintType, int description)
         {
             // For overriding
         }
@@ -141,7 +141,7 @@ namespace WindBot.Game.AI
         {
             // Some AI need do something on new turn
         }
-		
+
         public virtual void OnDraw(int player)
         {
             // Some AI need do something on draw

@@ -15,6 +15,7 @@ namespace WindBot.Game
         public int Position { get; set; }
         public int Sequence { get; set; }
         public CardLocation Location { get; set; }
+        public CardLocation LastLocation { get; set; }
         public int Alias { get; private set; }
         public int Level { get; private set; }
         public int Rank { get; private set; }
@@ -370,7 +371,7 @@ namespace WindBot.Game
             return ProcCompleted != 0 || !(IsExtraCard() || HasType(CardType.Ritual) || HasType(CardType.SpSummon));
         }
 
-        public bool IsCode(long id)
+        public bool IsCode(int id)
         {
             return Id == id || Alias != 0 && Alias == id;
         }

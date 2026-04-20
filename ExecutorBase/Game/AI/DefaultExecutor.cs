@@ -7,9 +7,6 @@ namespace WindBot.Game.AI
 {
     public abstract class DefaultExecutor : Executor
     {
-    protected readonly List<int> enemyResolvedEffectIdList = new List<int>();
-    protected readonly List<int> infiniteImpermanenceNegatedColumns = new List<int>();
-
         protected class _CardId
         {
             public const int JizukirutheStarDestroyingKaiju = 63941210;
@@ -102,6 +99,7 @@ namespace WindBot.Game.AI
             public const int EffectVeiler = 97268402;
             public const int ArtifactLancea = 34267821;
             public const int DimensionShifter = 91800273;
+            public const int NibiruThePrimalBeing = 27204311;
             public const int MulcharmyFuwalos = 42141493;
             public const int MulcharmyNyalus = 87126721;
             public const int MulcharmyPurulia = 84192580;
@@ -116,6 +114,7 @@ namespace WindBot.Game.AI
             public const int BanisheroftheLight = 61528025;
             public const int UpstartGoblin = 70368879;
             public const int CyberEmergency = 60600126;
+            public const int TheAgentOfCreationVenus = 64734921;
             public const int PotOfExtravagance = 84211599;
 
             public const int EaterOfMillions = 63845230;
@@ -138,12 +137,24 @@ namespace WindBot.Game.AI
             public const int DivineArsenalAAZEUS_SkyThunder = 90448279;
             public const int MaskedHERODarkLaw = 58481572;
             public const int LightningStorm = 14532163;
+            public const int MistakenArrest = 4227096;
+            public const int ThunderKingRaiOh = 71564252;
+            public const int ThunderDragonColossus = 15291624;
+            public const int DeckLockdown = 1149109;
+            public const int DoomZDestruction = 80320877;
+            public const int Mistake = 59305593;
+            public const int RescueACEHydrant = 37617348;
+            public const int LoThePrayersOfTheVoicelessVoice = 25801745;
+            public const int BarrierOfTheVoicelessVoice = 98477480;
+            public const int DiabellzeOfTheOriginalSin = 53765052;
         }
 
         protected class _Setcode
         {
             public const int TimeLord = 0x4a;
             public const int Danger = 0x11e;
+            public const int RescueACE = 0x18c;
+            public const int Horus = 0x3;
         }
 
         protected DefaultExecutor(GameAI ai, Duel duel)
@@ -151,7 +162,24 @@ namespace WindBot.Game.AI
         {
             AddExecutor(ExecutorType.Activate, _CardId.ChickenGame, DefaultChickenGame);
             AddExecutor(ExecutorType.Activate, _CardId.SantaClaws);
+            AddExecutor(ExecutorType.SpellSet, DefaultSetForDiabellze);
         }
+
+        protected long lightningStormOption = -1;
+        Dictionary<int, int> calledbytheGraveIdCountMap = new Dictionary<int, int>();
+        List<int> crossoutDesignatorIdList = new List<int>();
+        int mistakenArrestAffectedCount = 0;
+        /// <summary>
+        /// List of effect IDs that have been resolved this turn.
+        /// </summary>
+        protected List<int> resolvedEffectIdList = new List<int>();
+        /// <summary>
+        /// List of effect IDs that have been resolved by enemy this turn.
+        /// </summary>
+        protected List<int> enemyResolvedEffectIdList = new List<int>();
+
+        /// <summary>Columns 0-4 on Bot's field negated by Infinite Impermanence (enemy's col converted to ours: 4-col). Cleared at turn start.</summary>
+        protected List<int> infiniteImpermanenceNegatedColumns = new List<int>();
 
         /// <summary>
         /// Decide which card should the attacker attack.
@@ -270,6 +298,13 @@ namespace WindBot.Game.AI
             if (defender.OwnTargets.Any(card => card.IsCode(_CardId.PhantomKnightsFogBlade) && !card.IsDisabled()))
                 return false;
 
+            if (defender.IsCode(_CardId.RescueACEHydrant) && !defender.IsDisabled() && Enemy.GetMonsters().Any(monster => monster.HasSetcode(_Setcode.RescueACE) && !monster.IsCode(_CardId.RescueACEHydrant)))
+                return false;
+
+            if (Enemy.HasInSpellZone(_CardId.BarrierOfTheVoicelessVoice, true) && Enemy.HasInMonstersZone(_CardId.LoThePrayersOfTheVoicelessVoice, faceUp: true)
+                && Enemy.GetMonsters().Any(card => card.HasType(CardType.Ritual) && card.IsFaceup()) && !defender.HasType(CardType.Ritual))
+                return false;
+
             return true;
         }
 
@@ -334,6 +369,176 @@ namespace WindBot.Game.AI
         public override bool OnSelectMonsterSummonOrSet(ClientCard card)
         {
             return card.Level <= 4 && Bot.GetMonsters().Count(m => m.IsFaceup()) == 0 && Util.IsAllEnemyBetterThanValue(card.Attack, true);
+        }
+
+        /// <summary>
+        /// Called when the AI has to select one or more cards.
+        /// </summary>
+        /// <param name="cards">List of available cards.</param>
+        /// <param name="min">Minimal quantity.</param>
+        /// <param name="max">Maximal quantity.</param>
+        /// <param name="hint">The hint message of the select.</param>
+        /// <param name="cancelable">True if you can return an empty list.</param>
+        /// <returns>A new list containing the selected cards.</returns>
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
+        {
+            // workaround for Dogmatika Alba Zoa
+            int albaZoaCount = Bot.ExtraDeck.Count / 2;
+            if (!cancelable && min == albaZoaCount && max == albaZoaCount
+                && Duel.Player == 1 && (Duel.Phase == DuelPhase.Main1 || Duel.Phase == DuelPhase.Main2) && cards.All(card =>
+                card.Controller == 0 && (card.Location == CardLocation.Hand || card.Location == CardLocation.Extra)))
+            {
+                List<ClientCard> extraDeck = new List<ClientCard>(Bot.ExtraDeck);
+                int shuffleCount = extraDeck.Count;
+                while (shuffleCount-- > 1)
+                {
+                    int index = new Random().Next(extraDeck.Count);
+                    ClientCard tempCard = extraDeck[shuffleCount];
+                    extraDeck[shuffleCount] = extraDeck[index];
+                    extraDeck[index] = tempCard;
+                }
+
+                return Util.CheckSelectCount(extraDeck, cards, min, max);
+            }
+
+            return null;
+        }
+
+        public override void OnPlayerHint(int player, long hintType, int description)
+        {
+            base.OnPlayerHint(player, hintType, description);
+            if (player != 0 && player != 1)
+                return;
+            ClientField field = (player == 0) ? Bot : Enemy;
+        }
+
+        public override void OnHintZone(int player, int zone)
+        {
+            base.OnHintZone(player, zone);
+            ChainInfo currentChainInfo = Duel.GetCurrentSolvingChainInfo();
+            if (currentChainInfo != null)
+            {
+                if (currentChainInfo.IsCode(_CardId.InfiniteImpermanence))
+                {
+                    // Zone bit mapping: 0x100=col0, 0x200=col1, 0x400=col2, 0x800=col3, 0x1000=col4.
+                    for (int i = 0; i <= 4; i++)
+                    {
+                        if ((zone & (0x100 << i)) == 0)
+                            continue;
+                        if (currentChainInfo.ActivatePlayer == 0)
+                        {
+                            infiniteImpermanenceNegatedColumns.Add(i);
+                        }
+                        else
+                        {
+                            infiniteImpermanenceNegatedColumns.Add(4 - i);
+                        }
+                    }
+                }
+            }
+        }
+
+        public override void OnReceivingAnnouce(int player, long data)
+        {
+            if (player == 1 && data == Util.GetStringId(_CardId.LightningStorm, 0) || data == Util.GetStringId(_CardId.LightningStorm, 1))
+            {
+                lightningStormOption = data - Util.GetStringId(_CardId.LightningStorm, 0);
+            }
+
+            base.OnReceivingAnnouce(player, data);
+        }
+
+        public override void OnChainSolved(int chainIndex)
+        {
+            ChainInfo currentChain = Duel.GetCurrentSolvingChainInfo();
+            if (currentChain != null && !Duel.IsCurrentSolvingChainNegated())
+            {
+                if (currentChain.IsActivateCode(_CardId.LockBird))
+                {
+                    resolvedEffectIdList.Add(_CardId.LockBird);
+                }
+                if (currentChain.ActivatePlayer == 1)
+                {
+                    if (currentChain.IsActivateCode(_CardId.MaxxC))
+                        enemyResolvedEffectIdList.Add(_CardId.MaxxC);
+                    if (currentChain.IsActivateCode(_CardId.MulcharmyPurulia))
+                        enemyResolvedEffectIdList.Add(_CardId.MulcharmyPurulia);
+                    if (currentChain.IsActivateCode(_CardId.MulcharmyFuwalos))
+                        enemyResolvedEffectIdList.Add(_CardId.MulcharmyFuwalos);
+                    if (currentChain.IsActivateCode(_CardId.MulcharmyNyalus))
+                        enemyResolvedEffectIdList.Add(_CardId.MulcharmyNyalus);
+                    if (currentChain.IsActivateCode(_CardId.MistakenArrest))
+                    {
+                        if (Duel.Player == 1)
+                        {
+                            mistakenArrestAffectedCount = Math.Max(mistakenArrestAffectedCount, 3);
+                        }
+                        else
+                        {
+                            mistakenArrestAffectedCount = Math.Max(mistakenArrestAffectedCount, 2);
+                        }
+                    }
+                }
+            }
+        }
+
+        public override void OnChainEnd()
+        {
+            lightningStormOption = -1;
+            base.OnChainEnd();
+        }
+
+        /// <summary>
+        /// Reset variables for new turn.
+        /// </summary>
+        public override void OnNewTurn()
+        {
+            infiniteImpermanenceNegatedColumns.Clear();
+            resolvedEffectIdList.Clear();
+            enemyResolvedEffectIdList.Clear();
+            if (Duel.Turn <= 1)
+            {
+                calledbytheGraveIdCountMap.Clear();
+                mistakenArrestAffectedCount = 0;
+            }
+            mistakenArrestAffectedCount = Math.Max(mistakenArrestAffectedCount - 1, 0);
+            List<int> keyList = calledbytheGraveIdCountMap.Keys.ToList();
+            foreach (int dic in keyList)
+            {
+                if (calledbytheGraveIdCountMap[dic] > 0)
+                {
+                    calledbytheGraveIdCountMap[dic] -= 1;
+                }
+            }
+            crossoutDesignatorIdList.Clear();
+
+            base.OnNewTurn();
+        }
+
+        public override void OnMove(ClientCard card, int previousControler, int previousLocation, int currentControler, int currentLocation)
+        {
+            if (card != null)
+            {
+                ClientCard currentSolvingChain = Duel.GetCurrentSolvingChainCard();
+                if (currentSolvingChain != null && currentLocation == (int)CardLocation.Removed)
+                {
+                    int originId = card.Id;
+                    if (card.Data != null)
+                    {
+                        if (card.Data.Alias > 0) originId = card.Data.Alias;
+                        else originId = card.Id;
+                    }
+                    if (currentSolvingChain.IsCode(_CardId.CalledByTheGrave))
+                    {
+                        calledbytheGraveIdCountMap[originId] = 2;
+                    }
+                    if (currentSolvingChain.IsCode(_CardId.CrossoutDesignator))
+                    {
+                        crossoutDesignatorIdList.Add(originId);
+                    }
+                }
+            }
+            base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
 
         /// <summary>
@@ -484,6 +689,7 @@ namespace WindBot.Game.AI
         /// </summary>
         protected bool DefaultMaxxC()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             return Duel.Player == 1;
         }
         /// <summary>
@@ -491,10 +697,12 @@ namespace WindBot.Game.AI
         /// </summary>
         protected bool DefaultAshBlossomAndJoyousSpring()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             int[] ignoreList = {
                 _CardId.MacroCosmos,
                 _CardId.UpstartGoblin,
-                _CardId.CyberEmergency
+                _CardId.CyberEmergency,
+                _CardId.TheAgentOfCreationVenus
             };
             if (Util.GetLastChainCard().IsCode(ignoreList))
                 return false;
@@ -503,30 +711,12 @@ namespace WindBot.Game.AI
             return Duel.LastChainPlayer == 1;
         }
 
-        protected bool DefaultCheckWhetherSpellActivateWillBeNegated(ClientCard target)
-        {
-            if (target == null)
-                return false;
-            if (!(target.IsSpell() || target.IsTrap()))
-                return false;
-            if (target.Location != CardLocation.SpellZone && target.Location != CardLocation.Hand)
-                return false;
-
-            if (target.IsSpell())
-                return DefaultSpellWillBeNegated();
-            return DefaultTrapWillBeNegated();
-        }
-
-        protected bool DefaultCheckWhetherEnemyCanDraw()
-        {
-            // Keep this intentionally simple as a compatibility shim.
-            return true;
-        }
         /// <summary>
         /// Always activate unless the activating card is disabled
         /// </summary>
         protected bool DefaultGhostOgreAndSnowRabbit()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (Util.GetLastChainCard() != null && Util.GetLastChainCard().IsDisabled())
                 return false;
             return DefaultTrap();
@@ -536,6 +726,7 @@ namespace WindBot.Game.AI
         /// </summary>
         protected bool DefaultGhostBelleAndHauntedMansion()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             return DefaultTrap();
         }
         /// <summary>
@@ -543,6 +734,7 @@ namespace WindBot.Game.AI
         /// </summary>
         protected bool DefaultEffectVeiler()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             ClientCard LastChainCard = Util.GetLastChainCard();
             if (LastChainCard != null && (LastChainCard.IsCode(_CardId.GalaxySoldier) && Enemy.Hand.Count >= 3
                                     || LastChainCard.IsCode(_CardId.EffectVeiler, _CardId.InfiniteImpermanence)))
@@ -582,6 +774,7 @@ namespace WindBot.Game.AI
         /// </summary>
         protected bool DefaultInfiniteImpermanence()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             // TODO: disable s & t
             ClientCard LastChainCard = Util.GetLastChainCard();
             if (LastChainCard != null && (LastChainCard.IsCode(_CardId.GalaxySoldier) && Enemy.Hand.Count >= 3
@@ -666,6 +859,29 @@ namespace WindBot.Game.AI
         }
 
         /// <summary>
+        /// Check whether only Horus monster is special summoning.
+        /// If returning true, should not negate the special summon since it can be special summoned again.
+        /// </summary>
+        /// <returns></returns>
+        protected bool DefaultOnlyHorusSpSummoning()
+        {
+            if (Duel.SummoningCards.Count != 0)
+            {
+                bool notOnlyHorusFlag = false;
+                foreach (ClientCard card in Duel.SummoningCards)
+                {
+                    if (!card.HasSetcode(_Setcode.Horus) || card.LastLocation != CardLocation.Grave)
+                    {
+                        notOnlyHorusFlag = true;
+                        break;
+                    }
+                }
+                return !notOnlyHorusFlag;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Activate when all enemy monsters have better ATK.
         /// </summary>
         protected bool DefaultTorrentialTribute()
@@ -735,11 +951,6 @@ namespace WindBot.Game.AI
         protected bool DefaultSpellSet()
         {
             return (Card.IsTrap() || Card.HasType(CardType.QuickPlay) || DefaultSpellMustSetFirst()) && Bot.GetSpellCountWithoutField() < 4;
-        }
-
-        protected virtual bool DefaultSetForDiabellze()
-        {
-            return DefaultSpellSet();
         }
 
         /// <summary>
@@ -845,6 +1056,15 @@ namespace WindBot.Game.AI
                 _CardId.EvenlyMatched
             };
             int[] destroyAllOpponentList =
+            {
+                _CardId.DarkHole,
+                _CardId.InterruptedKaijuSlumber
+            };
+            int[] destroyAllOpponentMonsterList =
+            {
+                _CardId.Raigeki
+            };
+            int[] destroyAllOpponentSpellList =
             {
                 _CardId.HarpiesFeatherDuster,
                 _CardId.DarkMagicAttack
@@ -967,9 +1187,9 @@ namespace WindBot.Game.AI
                     AI.SelectOption(SYNCHRO);
                     return true;
                 }
-                for (int i=1; i<=12; i++)
+                for (int i = 1; i <= 12; i++)
                 {
-                    if (levels[i]>1)
+                    if (levels[i] > 1)
                     {
                         AI.SelectOption(XYZ);
                         return true;
@@ -1237,26 +1457,124 @@ namespace WindBot.Game.AI
         protected bool DefaultCheckWhetherCardIsNegated(ClientCard card)
         {
             if (card == null) return true;
-            return card.IsDisabled() && card.IsOnField();
+            if (card.Data == null) return card.IsDisabled();
+            int originId = card.Data.Alias;
+            if (originId == 0) originId = card.Data.Id;
+            return crossoutDesignatorIdList.Contains(originId)
+                || (calledbytheGraveIdCountMap.ContainsKey(originId) && calledbytheGraveIdCountMap[originId] > 0)
+                || (card.IsDisabled() && ((int)card.Location & (int)CardLocation.Onfield) > 0);
         }
 
         protected bool DefaultCheckWhetherCardIdIsNegated(int cardId)
         {
-            return false;
+            return crossoutDesignatorIdList.Contains(cardId)
+                || (calledbytheGraveIdCountMap.ContainsKey(cardId) && calledbytheGraveIdCountMap[cardId] > 0);
         }
 
         protected int GetCalledbytheGraveIdCount(int cardId)
         {
-            return 0;
+            if (!calledbytheGraveIdCountMap.ContainsKey(cardId)) return 0;
+            return calledbytheGraveIdCountMap[cardId];
         }
 
-        protected bool DefaultOnlyHorusSpSummoning()
+        protected virtual bool DefaultSetForDiabellze()
         {
+            if (Card == null) return false;
+            if (Card.Id == _CardId.PotOfExtravagance) return false;
+            if (Enemy.HasInMonstersZone(_CardId.DiabellzeOfTheOriginalSin, true, faceUp: true) && Card.HasType(CardType.Spell) && !Card.HasType(CardType.QuickPlay))
+            {
+                if (Bot.SpellZone.Any(c => c != null && Duel.MainPhase.ActivableCards.Contains(c) && c.HasType(CardType.Spell) && !Card.HasType(CardType.QuickPlay) && c.IsFacedown()))
+                {
+                    return false;
+                }
+                foreach (CardExecutor exec in Executors)
+                {
+                    if (exec.Type == ExecutorType.Activate && exec.CardId == Card.Id)
+                    {
+                        if (exec.Func == null || exec.Func())
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
             return false;
         }
 
+        /// <summary>
+        /// Check whether all available spell columns are negated.
+        /// </summary>
+        /// <returns></returns>
+        protected bool DefaultCheckAllAvailableSpellColumnNegated()
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                // occupied
+                if (Bot.SpellZone[i] != null)
+                {
+                    continue;
+                }
+                // negated
+                if (infiniteImpermanenceNegatedColumns.Contains(i))
+                {
+                    continue;
+                }
+                // have empty column that's not negated
+                return false;
+            }
+            // all columns are negated
+            return true;
+        }
+
+        /// <summary>
+        /// Check whether the spells will be negated.
+        /// </summary>
+        /// <param name="card"></param>
+        /// <returns></returns>
+        protected bool DefaultCheckWhetherSpellActivateWillBeNegated(ClientCard card)
+        {
+            if (card == null) return false;
+            if (card.Location == CardLocation.SpellZone)
+            {
+                return infiniteImpermanenceNegatedColumns.Contains(card.Sequence);
+            }
+            // check whether will be negated by Infinite Impermanence
+            return DefaultCheckAllAvailableSpellColumnNegated();
+        }
+
+        /// <summary>
+        /// Check whether bot can search cards from deck.
+        /// </summary>
+        /// <returns></returns>
         protected bool DefaultCheckWhetherBotCanSearch()
         {
+            if (resolvedEffectIdList.Contains(_CardId.LockBird))
+                return false;
+            if (mistakenArrestAffectedCount > 0)
+                return false;
+            if (Bot.HasInMonstersZone(_CardId.ThunderKingRaiOh, notDisabled: true, faceUp: true)
+                || Enemy.HasInMonstersZone(_CardId.ThunderKingRaiOh, notDisabled: true, faceUp: true))
+                return false;
+            if (Enemy.HasInMonstersZone(_CardId.ThunderDragonColossus))
+                return false;
+            if (Bot.HasInSpellZone(_CardId.DeckLockdown, notDisabled: true, faceUp: true)
+                || Enemy.HasInSpellZone(_CardId.DeckLockdown, notDisabled: true, faceUp: true)
+                || Bot.HasInSpellZone(_CardId.Mistake, notDisabled: true, faceUp: true)
+                || Enemy.HasInSpellZone(_CardId.Mistake, notDisabled: true, faceUp: true))
+                return false;
+            if (Enemy.HasInSpellZone(_CardId.DoomZDestruction, notDisabled: true, faceUp: true))
+                return false;
+            return true;
+        }
+
+        /// <summary>
+        /// Check whether enemy can draw cards.
+        /// </summary>
+        /// <returns></returns>
+        protected bool DefaultCheckWhetherEnemyCanDraw()
+        {
+            if (resolvedEffectIdList.Contains(_CardId.LockBird))
+                return false;
             return true;
         }
     }
