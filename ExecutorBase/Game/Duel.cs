@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using YGOSharp.OCGWrapper.Enums;
 
 namespace WindBot.Game
@@ -50,6 +49,8 @@ namespace WindBot.Game
             SummoningCards = new List<ClientCard>();
             LastSummonedCards = new List<ClientCard>();
             SolvingChainIndex = 0;
+            MainPhase = new MainPhase();
+            BattlePhase = new BattlePhase();
         }
 
         public void Clear()
