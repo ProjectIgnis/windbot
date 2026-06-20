@@ -1022,9 +1022,14 @@ namespace WindBot.Game.AI.Decks
                 return true;
             }
             // pax spsummon
-            if (desc == Util.GetStringId(CardId.ExosisterPax, 1))
+            if (desc == Util.GetStringId(CardId.ExosisterPax, 0))
             {
                 return paxCallToField;
+            }
+            // returnia eff
+            if (desc == Util.GetStringId(CardId.ExosisterReturnia, 1))
+            {
+                return true;
             }
 
             return base.OnSelectYesNo(desc);
@@ -1038,28 +1043,20 @@ namespace WindBot.Game.AI.Decks
             // check retunia
             int spSummonOption = -1;
             int banishOption = -1;
-            int doNothingOption = -1;
             for (int idx = 0; idx < options.Count(); ++ idx)
             {
                 long option = options[idx];
-                if (option == Util.GetStringId(CardId.ExosisterReturnia, 0))
+                if (option == Util.GetStringId(CardId.ExosisterReturnia, 2))
                 {
                     spSummonOption = idx;
-                } else if (option == Util.GetStringId(CardId.ExosisterReturnia, 1))
+                } else if (option == Util.GetStringId(CardId.ExosisterReturnia, 3))
                 {
                     banishOption = idx;
-                } else if (option == Util.GetStringId(CardId.ExosisterReturnia, 2))
-                {
-                    doNothingOption = idx;
                 }
             }
 
-            if (spSummonOption >= 0 || banishOption >= 0 || doNothingOption >= 0)
+            if (spSummonOption >= 0 || banishOption >= 0)
             {
-                if (spSummonOption < 0 && banishOption < 0)
-                {
-                    return doNothingOption;
-                }
                 if (banishOption >= 0)
                 {
                     // banish problem card
@@ -1082,30 +1079,6 @@ namespace WindBot.Game.AI.Decks
                 {
                     // TODO
                 }
-            }
-
-            // check pot
-            int potBanish6Option = -1;
-            int potBanish3Option = -1;
-            for (int idx = 0; idx < options.Count(); ++idx)
-            {
-                long option = options[idx];
-                if (option == Util.GetStringId(CardId.PotofExtravagance, 0))
-                {
-                    potBanish3Option = idx;
-                }
-                else if (option == Util.GetStringId(CardId.PotofExtravagance, 1))
-                {
-                    potBanish6Option = idx;
-                }
-            }
-            if (potBanish3Option >= 0 || potBanish6Option >= 0)
-            {
-                if (Bot.ExtraDeck.Count() > 9 && potBanish6Option >= 0)
-                {
-                    return potBanish6Option;
-                }
-                return potBanish3Option;
             }
 
             return base.OnSelectOption(options);
@@ -1458,7 +1431,10 @@ namespace WindBot.Game.AI.Decks
             {
                 SelectSTPlace(null, true);
             }
-
+            if(Bot.ExtraDeck.Count() > 9)
+            {
+                AI.SelectNumber(6);
+            }
             potActivate = true;
             return true;
         }
@@ -1666,7 +1642,7 @@ namespace WindBot.Game.AI.Decks
                 Util.GetStringId(CardId.ExosisterSophia, 1),
                 Util.GetStringId(CardId.ExosisterMartha, 1)
             };
-            if (!checkTransformCode.Contains((int)ActivateDescription) && ActivateDescription != -1)
+            if (!checkTransformCode.Contains(ActivateDescription) && ActivateDescription != -1)
             {
                 return false;
             }
