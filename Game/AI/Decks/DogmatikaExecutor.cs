@@ -807,7 +807,7 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<long> options)
         {
             // override for iris
-            List<long> checkOptionList = new List<long>{Util.GetStringId(CardId.ThesIrisSwordsoul, 4), Util.GetStringId(CardId.ThesIrisSwordsoul, 2)};
+            List<long> checkOptionList = new List<long>{Util.GetStringId(CardId.ThesIrisSwordsoul, 3), Util.GetStringId(CardId.ThesIrisSwordsoul, 1)};
             foreach (int checkOption in checkOptionList)
             {
                 for (int i = 0; i < options.Count(); ++ i)
