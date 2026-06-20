@@ -18,8 +18,8 @@ namespace WindBot.Game
         public int ActivateRank { get; private set; }
         public ulong ActivateType { get; private set; }
         public ulong ActivateRace { get; private set; }
-        public ulong ActivateAttack { get; private set; }
-        public ulong ActivateDefense { get; private set; }
+        public int ActivateAttack { get; private set; }
+        public int ActivateDefense { get; private set; }
         public bool IsSpecialSummoned { get; private set; }
         public long ActivateDescription { get; private set; }
 
@@ -42,9 +42,9 @@ namespace WindBot.Game
             ActivateRank = card.Rank;
             ActivateType = (ulong)card.Type;
             ActivateRace = card.Race;
-            ActivateAttack = (ulong)card.Attack;
+            ActivateAttack = card.Attack;
 
-            ActivateDefense = (ulong)card.Defense;
+            ActivateDefense = card.Defense;
             IsSpecialSummoned = card.IsSpecialSummoned;
             ActivateDescription = desc;
         }
