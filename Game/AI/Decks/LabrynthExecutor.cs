@@ -1389,7 +1389,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             // overrride for lovely
-            if (options.Contains(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 3)) && options.Contains(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 4)))
+            if (options.Contains(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 2)) && options.Contains(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 3)))
             {
                 int botWorstAttack = 0;
                 ClientCard botWorstMonster = Util.GetWorstBotMonster(true);
@@ -1408,11 +1408,11 @@ namespace WindBot.Game.AI.Decks
                 {
                     currentDestroyCardList.Add(targetList[0]);
                     AI.SelectCard(targetList);
-                    return options.IndexOf(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 4));
+                    return options.IndexOf(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 3));
                 }
                 else
                 {
-                    return options.IndexOf(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 3));
+                    return options.IndexOf(Util.GetStringId(CardId.LovelyLabrynthOfTheSilverCastle, 2));
                 }
             }
 
@@ -1470,7 +1470,7 @@ namespace WindBot.Game.AI.Decks
 
             // override for servant
             // sp summon
-            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 2)) || options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 2)))
+            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3)) || options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3)))
             {
                 if (GetEmptyMainMonsterZoneCount() > chainSummoningIdList.Count())
                 {
@@ -1543,14 +1543,14 @@ namespace WindBot.Game.AI.Decks
 
                     if (checkFlag)
                     {
-                        if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 2))) return options.IndexOf(Util.GetStringId(CardId.AriannaTheLabrynthServant, 2));
-                        if (options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 2))) return options.IndexOf(Util.GetStringId(CardId.ArianeTheLabrynthServant, 2));
+                        if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3))) return options.IndexOf(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3));
+                        if (options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3))) return options.IndexOf(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3));
                     }
                 }
             }
 
             // set
-            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3)) || options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3)))
+            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 4)) || options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 4)))
             {
                 if (!Util.ChainContainsCard(CardId.WelcomeLabrynth) || Bot.GetSpellCountWithoutField() < 4)
                 {
@@ -1560,16 +1560,12 @@ namespace WindBot.Game.AI.Decks
                         if (Bot.HasInHand(checkId) && (checkId == _CardId.InfiniteImpermanence || !Bot.HasInSpellZone(checkId, faceUp:false)))
                         {
                             AI.SelectCard(checkId);
-                            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3))) return options.IndexOf(Util.GetStringId(CardId.AriannaTheLabrynthServant, 3));
-                            if (options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3))) return options.IndexOf(Util.GetStringId(CardId.ArianeTheLabrynthServant, 3));
+                            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 4))) return options.IndexOf(Util.GetStringId(CardId.AriannaTheLabrynthServant, 4));
+                            if (options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 4))) return options.IndexOf(Util.GetStringId(CardId.ArianeTheLabrynthServant, 4));
                         }
                     }
                 }
             }
-
-            // do nothing
-            if (options.Contains(Util.GetStringId(CardId.AriannaTheLabrynthServant, 4))) return options.IndexOf(Util.GetStringId(CardId.AriannaTheLabrynthServant, 4));
-            if (options.Contains(Util.GetStringId(CardId.ArianeTheLabrynthServant, 4))) return options.IndexOf(Util.GetStringId(CardId.ArianeTheLabrynthServant, 4));
 
             return base.OnSelectOption(options);
         }
@@ -2589,7 +2585,7 @@ namespace WindBot.Game.AI.Decks
             if (CheckWhetherNegated()) return false;
             SelectSTPlace(Card, true);
             activatedCardIdList.Add(Card.Id);
-            AI.SelectOption(1);
+            AI.SelectNumber(6);
             return true;
         }
 
