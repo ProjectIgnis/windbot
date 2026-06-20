@@ -240,7 +240,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (desc == Util.GetStringId(CardId.Maliss_White_Binder, 3))
                 return true;
-            if (desc == Util.GetStringId(CardId.Maliss_MTP_07, 3))
+            if (desc == Util.GetStringId(CardId.Maliss_MTP_07, 2))
                 return Enemy.GetMonsters().Count(i => !i.IsShouldNotBeTarget()) + Enemy.GetSpells().Count(i => !i.IsShouldNotBeTarget() && (i.HasType(CardType.Field | CardType.Continuous | CardType.Equip) || i.IsFacedown())) > 0;
             return base.OnSelectYesNo(desc);
         }
