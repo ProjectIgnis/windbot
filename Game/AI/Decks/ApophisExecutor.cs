@@ -38,7 +38,7 @@ namespace WindBot.Game.AI.Decks
             public const int SuperdreadnoughtRailCannonJuggernautLiebe = 26096328;
             public const int SuperdreadnoughtRailCannonFlyingLauncher = 38354018;
             public const int EvilswarmExcitonKnight = 46772449;
-            public const int SPLittleKnight = 46772449;
+            public const int SPLittleKnight = 29301450;
             public const int SilhouhatteRabbit = 1528054;
             public const int LinkSpider = 98978921;
         }
@@ -379,7 +379,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool CheckWhetherCanActivateMonsterEffect(CardAttribute attribute)
         {
-            if (Bot.HintDescriptions.Contains(Util.GetStringId(CardId.DominusSpark, 3))
+            if (Bot.HintDescriptions.Contains(Util.GetStringId(CardId.DominusSpark, 2))
             && (attribute & (CardAttribute.Earth | CardAttribute.Water | CardAttribute.Fire | CardAttribute.Wind)) != 0)
             {
                 return false;
@@ -1174,14 +1174,14 @@ namespace WindBot.Game.AI.Decks
 
         public override int OnSelectOption(IList<long> options)
         {
-            if (options.Contains(Util.GetStringId(_CardId.PotOfExtravagance, 1)))
+            if (options.Contains(Util.GetStringId(CardId.PrimiteDrillbeam, 2)))
             {
-                return options.IndexOf(Util.GetStringId(_CardId.PotOfExtravagance, 1));
+                return options.IndexOf(Util.GetStringId(CardId.PrimiteDrillbeam, 2));
             }
-            if (options.Contains(Util.GetStringId(CardId.SolemnReport, 1)) && options.Contains(Util.GetStringId(CardId.SolemnReport, 2)))
+            if (options.Contains(Util.GetStringId(CardId.SolemnReport, 2)) && options.Contains(Util.GetStringId(CardId.SolemnReport, 3)))
             {
-                int destroyOpt = options.IndexOf(Util.GetStringId(CardId.SolemnReport, 1));
-                int banishOpt = options.IndexOf(Util.GetStringId(CardId.SolemnReport, 2));
+                int destroyOpt = options.IndexOf(Util.GetStringId(CardId.SolemnReport, 2));
+                int banishOpt = options.IndexOf(Util.GetStringId(CardId.SolemnReport, 3));
                 bool avoidDestroyFlag = false;
                 if (Duel.CurrentChain.Count >= 2)
                 {
@@ -1336,16 +1336,6 @@ namespace WindBot.Game.AI.Decks
             return base.OnSelectPlace(cardId, player, location, available);
         }
 
-        public override bool OnSelectYesNo(long desc)
-        {
-            if (desc == Util.GetStringId(CardId.PrimiteDrillbeam, 0))
-            {
-                return false;
-            }
-
-            return base.OnSelectYesNo(desc);
-        }
-
         public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
         {
             YGOSharp.OCGWrapper.NamedCard cardData = YGOSharp.OCGWrapper.NamedCard.Get(cardId);
@@ -1447,7 +1437,7 @@ namespace WindBot.Game.AI.Decks
                             activatedCardIdList.Add(currentChain.ActivateId);
                             break;
                         case CardId.TreasuresOfTheKings:
-                            if (currentChain.ActivateDescription != Util.GetStringId(CardId.TreasuresOfTheKings, 0))
+                            if (currentChain.ActivateDescription == Util.GetStringId(CardId.TreasuresOfTheKings, 0))
                             {
                                 activatedCardIdList.Add(currentChain.ActivateId);
                             }
@@ -1759,7 +1749,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (CheckWhetherNegated()) return false;
             SelectSTPlace(Card, true);
-            AI.SelectOption(1);
+            AI.SelectNumber(6);
             return true;
         }
 
@@ -1964,7 +1954,7 @@ namespace WindBot.Game.AI.Decks
             if (CheckWhetherNegated()) return false;
 
             // search
-            if (ActivateDescription == Util.GetStringId(CardId.TreasuresOfTheKings, 0))
+            if (ActivateDescription == Util.GetStringId(CardId.TreasuresOfTheKings, 1))
             {
                 activatedCardIdList.Add(Card.Id + 1);
                 return true;
@@ -2376,7 +2366,7 @@ namespace WindBot.Game.AI.Decks
         public bool DivineSerpentApophisActivate()
         {
             if (CheckWhetherNegated()) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.DivineSerpentApophis, 0))
+            if (ActivateDescription == Util.GetStringId(CardId.DivineSerpentApophis, 1))
             {
                 // set trap
                 activatedDivineSerpent1stList.Add(Card);
