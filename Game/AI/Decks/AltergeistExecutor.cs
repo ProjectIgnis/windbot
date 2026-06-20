@@ -1,4 +1,4 @@
-﻿using YGOSharp.OCGWrapper.Enums;
+using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using WindBot;
 using WindBot.Game;
@@ -630,11 +630,11 @@ namespace WindBot.Game.AI.Decks
             if (!spell_trap_activate()) return false;
             if (Bot.LifePoints <= 1000)
                 return false;
-            if (Bot.LifePoints - 1000 <= Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 0))
+            if (Bot.LifePoints - 1000 <= Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 1))
             {
                 return true;
             }
-            if (Bot.LifePoints - 1000 > Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 1))
+            if (Bot.LifePoints - 1000 > Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 2))
             {
                 return true;
             }
