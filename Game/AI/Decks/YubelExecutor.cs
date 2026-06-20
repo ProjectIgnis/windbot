@@ -1805,7 +1805,8 @@ namespace WindBot.Game.AI.Decks
             // รายการเป้า (ศัตรูก่อน ถ้าไม่มีค่อย fallback)
             List<ClientCard> targetList = GetNormalEnemyTargetList(true, true);
             int desc = (int)ActivateDescription;
-            long d1 = Util.GetStringId(CardId.VARUDASN_FINAL_BRINGER, 1); // ใช้ทั้ง e1 (Negate) และ e2 (Battle Start destroy)
+            long d0 = Util.GetStringId(CardId.VARUDASN_FINAL_BRINGER, 0); // ใช้ทั้ง e1 (Negate)
+            long d1 = Util.GetStringId(CardId.VARUDASN_FINAL_BRINGER, 1); // และ e2 (Battle Start destroy)
             long d2 = Util.GetStringId(CardId.VARUDASN_FINAL_BRINGER, 2); // e3 (Destroyed -> destroy 1)
 
             Logger.DebugWriteLine("[Varudras] desc: " + desc + ", timing = " + CurrentTiming);
@@ -1814,7 +1815,7 @@ namespace WindBot.Game.AI.Decks
             ClientCard enemyPick = targetList.FirstOrDefault(c => c != null && c.Controller == 1);
 
             // e1: Quick effect Negate (ฝั่งคู่ต่อสู้กดเอฟเฟกต์)
-            if (desc == d1 && Duel.LastChainPlayer == 1 && Duel.CurrentChain.Count > 0)
+            if (desc == d0)
             {
                 if (!CheckLastChainShouldNegated()) return false;
                 activatedCardIdList.Add(Card.Id); // แท็กว่าเป็น e1
@@ -1841,7 +1842,7 @@ namespace WindBot.Game.AI.Decks
                 }
 
                 // log / tag effect ย่อย
-                if (desc == d1 && Duel.CurrentChain.Count == 0) activatedCardIdList.Add(Card.Id + 1); // e2
+                if (desc == d1) activatedCardIdList.Add(Card.Id + 1); // e2
                 if (desc == d2) activatedCardIdList.Add(Card.Id + 2); // e3
 
                 AI.SelectCard(targetList);
@@ -2011,6 +2012,27 @@ namespace WindBot.Game.AI.Decks
             return false;
         }
 
+        public override int OnSelectOption(IList<long> options)
+        {
+            if(options.Contains(Util.GetStringId(CardId.YUBEL, 3)))
+            {
+                // มี Lotus "บนสนามเรา" ไหม
+                bool haveLotusOnField = Bot.GetMonsters().Any(m => m != null && m.Id == CardId.SAMSARA_D_LOTUS);
+
+                // ถ้ามี จะตอบ YES และตั้งธงว่ากำลังจะเลือกตัวสังเวยให้ Yubel
+                _yubelWantsTribute = haveLotusOnField;
+                if(haveLotusOnField)
+                {
+                    return options.IndexOf(Util.GetStringId(CardId.YUBEL, 3));
+                }
+                else if(options.Contains(Util.GetStringId(CardId.YUBEL, 2)))
+                {
+                    return options.IndexOf(Util.GetStringId(CardId.YUBEL, 2));
+                }
+            }
+            return base.OnSelectOption(options);
+        }
+
         #endregion
 
         // ======================= On Select Somethings ====================
@@ -2067,7 +2089,7 @@ namespace WindBot.Game.AI.Decks
             }*/
 
             // --- Varudras: ถามถอดวัตถุดิบอีก 1 เพื่อทำลาย ---
-            if (YesNoFor(desc, CardId.VARUDASN_FINAL_BRINGER, 1))
+            if (YesNoFor(desc, CardId.VARUDASN_FINAL_BRINGER, 3))
             {
                 ClientCard best = GetBestEnemyCard();
                 return best != null && ShouldVarudrasDetachForPop(best);
@@ -2080,17 +2102,6 @@ namespace WindBot.Game.AI.Decks
                 ClientCard t = GetNormalEnemyTargetList(true, true).FirstOrDefault(c => c.Controller == 1);
                 if (t == null) return false;                // ไม่มีเป้า → ไม่ถอด
                 return ShouldVarudrasDetachForPop(t);       // มีเป้า → ใช้เกณฑ์เดิมตัดสิน
-            }
-
-            // aux.Stringid(78371393,2) -> คำถาม "จะสังเวยไหม?"
-            if (YesNoFor(desc, CardId.YUBEL, 2))
-            {
-                // มี Lotus "บนสนามเรา" ไหม
-                bool haveLotusOnField = Bot.GetMonsters().Any(m => m != null && m.Id == CardId.SAMSARA_D_LOTUS);
-
-                // ถ้ามี จะตอบ YES และตั้งธงว่ากำลังจะเลือกตัวสังเวยให้ Yubel
-                _yubelWantsTribute = haveLotusOnField;
-                return haveLotusOnField; // YES ถ้ามี Lotus, NO ถ้าไม่มี => Yubel ระเบิดตัวเอง
             }
 
 
