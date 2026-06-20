@@ -1506,7 +1506,7 @@ namespace WindBot.Game.AI.Decks
         public override int OnSelectOption(IList<long> options)
         {
             bool tripleCheck = false;
-            for (int opt = 0; opt < 3; ++ opt)
+            for (int opt = 1; opt < 4; ++ opt)
             {
                 if (options.Contains(Util.GetStringId(CardId.TripleTacticsTalent, opt)))
                 {
@@ -1520,7 +1520,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             bool no60Check = false;
-            for (int opt = 0; opt < 3; ++ opt)
+            for (int opt = 1; opt < 4; ++ opt)
             {
                 if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, opt)))
                 {
@@ -1531,11 +1531,11 @@ namespace WindBot.Game.AI.Decks
             if (no60Check)
             {
                 // double attack
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2)))
+                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 3)))
                 {
                     if (Number60DugaresTheTimelessDoubleTarget() != null)
                     {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2));
+                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 3));
                         if (res >= 0)
                         {
                             return res;
@@ -1543,11 +1543,11 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
                 // draw effect
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 0)))
+                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1)))
                 {
                     if (Number60DugaresTheTimelessDrawEffect())
                     {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 0));
+                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1));
                         if (res >= 0)
                         {
                             return res;
@@ -1555,11 +1555,11 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
                 // reborn
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1)))
+                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2)))
                 {
                     if (Number60DugaresTheTimelessRebornEffect())
                     {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1));
+                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2));
                         if (res >= 0)
                         {
                             return res;
@@ -2423,7 +2423,7 @@ namespace WindBot.Game.AI.Decks
             if (dangerFlag)
             {
                 if (options == null) return 1;
-                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 1));
+                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 2));
                 if (res >= 0) return res;
             }
             // draw?
@@ -2433,7 +2433,7 @@ namespace WindBot.Game.AI.Decks
                 if (!checkFlag)
                 {
                     if (options == null) return 1;
-                    int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 0));
+                    int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 1));
                     if (res >= 0) return res;
                 }
             }
@@ -2441,7 +2441,7 @@ namespace WindBot.Game.AI.Decks
             if (Enemy.Hand.Count() > 0)
             {
                 if (options == null) return 1;
-                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 2));
+                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 3));
                 if (res >= 0) return res;
             }
             return -1;
@@ -2847,7 +2847,7 @@ namespace WindBot.Game.AI.Decks
             }
 
             // whether to negate by cross
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
             {
                 ChainInfo currentChainInfo = Duel.GetCurrentSolvingChainInfo();
                 if (currentChainInfo != null && !Duel.IsCurrentSolvingChainNegated())
@@ -2882,7 +2882,7 @@ namespace WindBot.Game.AI.Decks
         public bool RyzealCrossActivateRecycleFirst()
         {
             if (CheckWhetherNegated(true) || !(Card.Location == CardLocation.SpellZone && Card.IsFaceup())) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
             {
                 return false;
             }
@@ -2911,7 +2911,7 @@ namespace WindBot.Game.AI.Decks
         public bool RyzealCrossActivateRecycleLater()
         {
             if (CheckWhetherNegated(true) || !(Card.Location == CardLocation.SpellZone && Card.IsFaceup())) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
             {
                 return false;
             }
