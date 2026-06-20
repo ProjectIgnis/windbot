@@ -1726,9 +1726,9 @@ namespace WindBot.Game.AI.Decks
         }
         public override int OnSelectOption(IList<long> options)
         {
-            if (options.Contains(Util.GetStringId(CardId.MechaPhantomBeastAuroradon, 3)))
+            if (options.Contains(Util.GetStringId(CardId.MechaPhantomBeastAuroradon, 4)))
             {
-                if (opt_1) return options.IndexOf(Util.GetStringId(CardId.MechaPhantomBeastAuroradon, 3));
+                if (opt_1) return options.IndexOf(Util.GetStringId(CardId.MechaPhantomBeastAuroradon, 4));
                 else if (opt_0) return 0;
                 return (int)options[options.Count - 1];
             }
@@ -1979,7 +1979,7 @@ namespace WindBot.Game.AI.Decks
                 }
                 result = func.CardsIdToClientCards(ids, cards);
             }
-            else if (hint == Util.GetStringId(CardId.Zefraath, 1))
+            else if (hint == Util.GetStringId(CardId.Zefraath, 5))
             {
                 int[] pScales = Func.GetPScales(Bot);
                 int rScale = pScales[0];
