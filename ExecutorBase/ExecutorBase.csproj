@@ -57,6 +57,8 @@
     <Compile Include="Game\AI\Enums\Floodgate.cs" />
     <Compile Include="Game\AI\Enums\FusionSpell.cs" />
     <Compile Include="Game\AI\Enums\InvincibleMonster.cs" />
+    <Compile Include="Game\AI\Enums\NotBeSynchroMaterialMonster.cs" />
+    <Compile Include="Game\AI\Enums\NotBeXyzMaterialMonster.cs" />
     <Compile Include="Game\AI\Enums\OneForXyz.cs" />
     <Compile Include="Game\AI\Enums\PreventActivationEffectInBattle.cs" />
     <Compile Include="Game\AI\Enums\ShouldBeDisabledBeforeItUseEffectMonster.cs" />
@@ -87,6 +89,7 @@
     <Compile Include="YGOSharp.OCGWrapper.Enums\CardType.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\DuelPhase.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\GameMessage.cs" />
+    <Compile Include="YGOSharp.OCGWrapper.Enums\PlayerHintType.cs" />
     <Compile Include="YGOSharp.OCGWrapper.Enums\Query.cs" />
     <Compile Include="YGOSharp.OCGWrapper\Card.cs" />
     <Compile Include="YGOSharp.OCGWrapper\CardsManager.cs" />

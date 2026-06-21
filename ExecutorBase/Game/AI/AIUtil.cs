@@ -439,7 +439,7 @@ namespace WindBot.Game.AI
 #if DEBUG
                     throw new Exception("Not enough cards to CheckSelectCount");
 #else
-                    Logger.WriteErrorLine("Not enough cards to CheckSelectCount, using default");
+                    //Logger.WriteErrorLine("Not enough cards to CheckSelectCount, using default");
                     return null;
 #endif
                 }
