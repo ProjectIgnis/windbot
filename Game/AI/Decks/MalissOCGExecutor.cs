@@ -80,7 +80,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Maliss_Red_Ransom, Effect_Maliss_Link);
             AddExecutor(ExecutorType.Activate, CardId.Maliss_Hearts_Crypter, Effect_Maliss_Hearts_Crypter);
             AddExecutor(ExecutorType.Activate, CardId.Link_Decoder);
-            
+
             AddExecutor(ExecutorType.Summon, CardId.Maliss_Dormouse, Summon_Maliss_Dormouse);
             AddExecutor(ExecutorType.Summon, CardId.Maliss_White_Rabbit, Summon_Maliss_White_Rabbit);
             AddExecutor(ExecutorType.Summon, CardId.Maliss_Chessy_Cat, Summon_Maliss_Chessy_Cat);
@@ -107,9 +107,9 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Maliss_March_Hare, Effect_Maliss_March_Hare);
             AddExecutor(ExecutorType.Activate, CardId.Backup_Ignister);
             AddExecutor(ExecutorType.Activate, CardId.Wizard_Ignister, Effect_Wizard_Ignister);
-            
+
             AddExecutor(ExecutorType.Activate, CardId.Maliss_in_the_Mirror, Effect_Maliss_in_the_Mirror);
-            
+
             AddExecutor(ExecutorType.SpSummon, CardId.Maliss_Hearts_Crypter, SP_Maliss_Hearts_Crypter);
             AddExecutor(ExecutorType.SpSummon, CardId.Maliss_White_Binder, SP_Maliss_White_Binder);
             AddExecutor(ExecutorType.Activate, CardId.Maliss_GWC_06, Effect_Maliss_GWC_06);
@@ -300,7 +300,7 @@ namespace WindBot.Game.AI.Decks
                     {
                         if ((data.Zone & available) == 0)
                             continue;
-                        
+
                         int nullCount = data.CheckZone.Count(card => card == null);
                         if (nullCount > maxNullCount)
                         {
@@ -368,7 +368,7 @@ namespace WindBot.Game.AI.Decks
                         if (cards.Any(i => i.Id == CardId.Maliss_Chessy_Cat && i.Location == CardLocation.Deck)
                             && Count.CheckCardRemoved(CardId.Maliss_Chessy_Cat))
                             return Util.CheckSelectCount(cards.Where(i => i.Id == CardId.Maliss_Chessy_Cat).ToList(), cards, min, max);
-                        
+
                     }
                     return Util.CheckSelectCount(cards.Where(i => i.Location == CardLocation.Deck).ToList(), cards, min, max);
                 case CardId.Gold_Sarcophagus:
@@ -967,7 +967,7 @@ namespace WindBot.Game.AI.Decks
                 Count.AddCard(Card.Id);
                 return true;
             }
-            else 
+            else
                 return Effect_Maliss_Removed();
         }
         private bool Summon_Maliss_Chessy_Cat()
@@ -987,7 +987,7 @@ namespace WindBot.Game.AI.Decks
                 Count.AddCard(Card.Id);
                 return true;
             }
-            else 
+            else
                 return Effect_Maliss_Removed();
         }
         private bool Summon_Maliss_Dormouse()
@@ -1152,7 +1152,7 @@ namespace WindBot.Game.AI.Decks
                                 && Count.CheckCard(CardId.Maliss_White_Binder))
                 )
                 return false;
-    
+
             bool chk = false;
             if (!Count.CheckCard(CardId.Dimension_Shifter) && Count.CheckCard(CardId.Artifact_Lancea))
                 chk = Bot.Graveyard.Any(i => i.HasType(CardType.Monster) && i.HasRace(CardRace.Cyberse) && !i.HasType(CardType.Link));
@@ -1294,7 +1294,7 @@ namespace WindBot.Game.AI.Decks
                 Count.AddCard(Card.Id);
                 return true;
             }
-            else 
+            else
                 return Effect_Maliss_Removed(900);
         }
         private bool SP_Link_Decoder()
@@ -1479,11 +1479,11 @@ namespace WindBot.Game.AI.Decks
             return Card.Location == CardLocation.Hand;
         }
         private bool GoToBattlePhase()
-        {           
+        {
             if (!Enemy.GetMonsters().Any(i => i.IsDefense()))
             {
                 if (Util.GetTotalAttackingMonsterAttack(0) >= Enemy.LifePoints + Util.GetTotalAttackingMonsterAttack(1))
-                {                   
+                {
                     return true;
                 }
             }

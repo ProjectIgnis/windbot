@@ -68,8 +68,7 @@ namespace WindBot.Game
 
             _room = new Room();
             _duel = new Duel();
-
-            _ai = new GameAI(_duel, Game.Dialog, Game.Chat, Game.Log, Program.AssetPath);
+            _ai = new GameAI(_duel, Game.Dialog, Game.Chat, Game.Log, Game.Surrender, Program.AssetPath);
             _ai.Executor = DecksManager.Instantiate(_ai, _duel, Game.Deck);
             if(Game.DeckFile != null)
                 Logger.WriteLine("Custom deck provided, loading: " + Game.DeckFile + ".");
@@ -354,6 +353,8 @@ namespace WindBot.Game
             string otherName = (player == 0) ? _room.Names[1] : _room.Names[0];
             if (player < 4)
                 Logger.DebugWriteLine(otherName + " say to " + myName + ": " + message);
+            else
+                Logger.DebugWriteLine("System message(" + player + "): " + message);
         }
 
         private void OnErrorMsg(BinaryReader packet)
@@ -410,6 +411,15 @@ namespace WindBot.Game
             {
                 _select_hint = data;
             }
+            if (type == 4) // HINT_OPSELECTED
+            {
+                _ai.OnReceivingAnnouce(player, data);
+            }
+            if (type == 11) // HINT_ZONE
+            {
+                Logger.DebugWriteLine("HINT_ZONE received: player=" + player + ", zone=" + data);
+                _ai.OnHintZone(player, (int)data);
+            }
         }
 
         private void OnStart(BinaryReader packet)
@@ -417,6 +427,11 @@ namespace WindBot.Game
             int type = packet.ReadByte();
             _duel.IsFirst = (type & 0xF) == 0;
             _duel.Turn = 0;
+            _duel.LastChainLocation = 0;
+            _duel.LastChainPlayer = -1;
+            _duel.LastChainTargets.Clear();
+            _duel.LastSummonedCards.Clear();
+            _duel.LastSummonPlayer = -1;
             /*int duel_rule = packet.ReadByte();
             _ai.Duel.IsNewRule = (duel_rule == 4);
             _ai.Duel.IsNewRule2020 = (duel_rule >= 5);*/
@@ -428,7 +443,8 @@ namespace WindBot.Game
             deck = packet.ReadInt16();
             extra = packet.ReadInt16();
             _duel.Fields[GetLocalPlayer(1)].Init(deck, extra);
-            //just in case of ending the duel in chain's solving
+
+            // in case of ending duel in chain's solving
             _duel.CurrentChain.Clear();
             _duel.CurrentChainInfo.Clear();
             _duel.ChainTargets.Clear();
@@ -747,7 +763,9 @@ namespace WindBot.Game
                         (CardLocation)previous.location + " move to " + (CardLocation)current.location + ")");
                 }
             }
-        }
+
+            _ai.OnMove(card, previous.controler, previous.location, current.controler, current.location);
+       }
 
         private void OnSwap(BinaryReader packet)
         {
@@ -762,7 +780,7 @@ namespace WindBot.Game
             _duel.RemoveCard((CardLocation)info2.location, card2, info2.controler, info2.sequence);
             _duel.AddCard((CardLocation)info2.location, card1, info2.controler, info2.sequence, card1.Position, cardId1);
             _duel.AddCard((CardLocation)info1.location, card2, info1.controler, info1.sequence, card2.Position, cardId2);
-        }
+       }
 
         private void OnAttack(BinaryReader packet)
         {
@@ -830,6 +848,7 @@ namespace WindBot.Game
             long desc = packet.ReadInt64();
             if (_debug)
                 if (card != null) Logger.WriteLine("(" + cc.ToString() + " 's " + (card.Name ?? "UnKnowCard") + " activate effect)");
+            _duel.LastChainLocation = (CardLocation)info.location;
             _ai.OnChaining(card, cc);
             //_duel.ChainTargets.Clear();
             _duel.ChainTargetOnly.Clear();
@@ -869,12 +888,15 @@ namespace WindBot.Game
             _duel.MainPhaseEnd = false;
             _ai.OnChainEnd();
             _duel.LastChainPlayer = -1;
+            _duel.LastChainLocation = 0;
             _duel.CurrentChain.Clear();
             _duel.CurrentChainInfo.Clear();
             _duel.ChainTargets.Clear();
+            _duel.LastChainTargets.Clear();
             _duel.ChainTargetOnly.Clear();
             _duel.SolvingChainIndex = 0;
             _duel.NegatedChainIndexList.Clear();
+            _duel.SummoningCards.Clear();
         }
 
         private void OnCardSorting(BinaryReader packet)
@@ -1204,8 +1226,8 @@ namespace WindBot.Game
             packet.ReadByte(); // player
             packet.ReadByte(); // specount
             bool forced = packet.ReadByte() != 0;
-            packet.ReadInt32(); // hint1
-            packet.ReadInt32(); // hint2
+            int hint1 = packet.ReadInt32();
+            int hint2 = packet.ReadInt32();
             int count = packet.ReadInt32();
 
             IList<ClientCard> cards = new List<ClientCard>();
@@ -1243,7 +1265,7 @@ namespace WindBot.Game
                 return;
             }
 
-            Connection.Send(CtosMessage.Response, _ai.OnSelectChain(cards, descs, forced));
+            Connection.Send(CtosMessage.Response, _ai.OnSelectChain(cards, descs, forced, hint1 | hint2));
         }
 
         private void OnSelectCounter(BinaryReader packet)
@@ -2092,7 +2114,38 @@ namespace WindBot.Game
                 card.IsSpecialSummoned = true;
                 _duel.LastSummonedCards.Add(card);
             }
+            _ai.OnSpSummoned();
             _duel.SummoningCards.Clear();
+        }
+
+        private void OnConfirmCards(BinaryReader packet)
+        {
+            /*int playerid = */packet.ReadByte();
+            int count = packet.ReadInt32();
+            for (int i = 0; i < count; ++ i)
+            {
+                int cardId = packet.ReadInt32();
+                int player = GetLocalPlayer(packet.ReadByte());
+                int loc = packet.ReadByte();
+                int seq = packet.ReadInt32();
+                ClientCard card = _duel.GetCard(player, (CardLocation)loc, seq);
+                if (cardId > 0) card.SetId(cardId);
+                if (_debug)
+                    Logger.WriteLine("(Confirm " + player.ToString() + "'s " + (CardLocation)loc + " card: " + (card.Name ?? "UnKnowCard") + ")");
+            }
+        }
+
+        /// <summary>
+        /// Handles PlayerHint message. Protocol: player(buffer8), hintType(buffer8), description(buffer32).
+        /// hintType values: PlayerHintType (e.g. PHINT_DESC_ADD=6, PHINT_DESC_REMOVE=7).
+        /// </summary>
+        private void OnPlayerHint(BinaryReader packet)
+        {
+            int player = GetLocalPlayer(packet.ReadByte());
+            int hintType = packet.ReadByte();
+            ulong description = packet.ReadUInt64();
+            Logger.DebugWriteLine("PlayerHint received: player=" + player + ", hintType=" + hintType + " (" + (PlayerHintType)hintType + "), description=" + description);
+            _ai.OnPlayerHint(player, hintType, description);
         }
     }
 }

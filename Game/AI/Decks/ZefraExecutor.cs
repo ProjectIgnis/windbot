@@ -1034,7 +1034,7 @@ namespace WindBot.Game.AI.Decks
         private bool BorreloadSavageDragonEffect()
         {
             /*
-             * effect1 bug: Unable to read card info in the func "OnselectCard" 
+             * effect1 bug: Unable to read card info in the func "OnselectCard"
              *              Unable to run in the "ActivateDescription == -1"
              */
             AI.SelectCard(new[]

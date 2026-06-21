@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using WindBot.Game.AI.Enums;
 using YGOSharp.OCGWrapper.Enums;
 
@@ -21,7 +22,8 @@ namespace WindBot.Game.AI
         /// </summary>
         public static bool IsMonsterDangerous(this ClientCard card)
         {
-            return !card.IsDisabled() && Enum.IsDefined(typeof(DangerousMonster), card.Id);
+            return !card.IsDisabled() &&
+                (Enum.IsDefined(typeof(DangerousMonster), card.Id) || (card.HasSetcode(0x18e) && (card.HasType(CardType.Ritual) || card.EquipCards.Count > 0)));
         }
 
         /// <summary>
@@ -37,7 +39,8 @@ namespace WindBot.Game.AI
         /// </summary>
         public static bool IsShouldNotBeTarget(this ClientCard card)
         {
-            return !card.IsDisabled() && !card.HasType(CardType.Normal) && Enum.IsDefined(typeof(ShouldNotBeTarget), card.Id);
+            return !card.IsDisabled() && !card.HasType(CardType.Normal)
+                && (Enum.IsDefined(typeof(ShouldNotBeTarget), card.Id) || card.Overlays.Any(code => code == 91025875));
         }
 
         /// <summary>
@@ -45,7 +48,8 @@ namespace WindBot.Game.AI
         /// </summary>
         public static bool IsShouldNotBeMonsterTarget(this ClientCard card)
         {
-            return !card.IsDisabled() && Enum.IsDefined(typeof(ShouldNotBeMonsterTarget), card.Id);
+            return !card.IsDisabled() && Enum.IsDefined(typeof(ShouldNotBeMonsterTarget), card.Id)
+                || card.EquipCards.Any(c => c.IsCode(89812483) && !c.IsDisabled());
         }
 
         /// <summary>
@@ -53,7 +57,8 @@ namespace WindBot.Game.AI
         /// </summary>
         public static bool IsShouldNotBeSpellTrapTarget(this ClientCard card)
         {
-            return !card.IsDisabled() && Enum.IsDefined(typeof(ShouldNotBeSpellTrapTarget), card.Id);
+            return !card.IsDisabled() && Enum.IsDefined(typeof(ShouldNotBeSpellTrapTarget), card.Id)
+                || card.EquipCards.Any(c => c.IsCode(89812483) && !c.IsDisabled());
         }
 
         /// <summary>
@@ -77,6 +82,22 @@ namespace WindBot.Game.AI
         public static bool IsFusionSpell(this ClientCard card)
         {
             return Enum.IsDefined(typeof(FusionSpell), card.Id);
+        }
+
+        /// <summary>
+        /// Is this monster not be synchro material?
+        /// </summary>
+        public static bool IsMonsterNotBeSynchroMaterial(this ClientCard card)
+        {
+            return Enum.IsDefined(typeof(NotBeSynchroMaterialMonster), card.Id);
+        }
+
+        /// <summary>
+        /// Is this monster not be xyz material?
+        /// </summary>
+        public static bool IsMonsterNotBeXyzMaterial(this ClientCard card)
+        {
+            return Enum.IsDefined(typeof(NotBeXyzMaterialMonster), card.Id);
         }
     }
 }

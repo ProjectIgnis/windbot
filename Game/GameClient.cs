@@ -143,10 +143,14 @@ namespace WindBot.Game
         {
             if (!forced && !_chat)
                 return;
-            byte[] content = Encoding.Unicode.GetBytes(message + "\0");
             BinaryWriter chat = GamePacketFactory.Create(CtosMessage.Chat);
-            chat.Write(content);
+            chat.WriteUnicodeAutoLength(message, 255);
             Connection.Send(chat);
+        }
+
+        public void Surrender()
+        {
+            Connection.Send(CtosMessage.Surrender);
         }
 
         public void Log(string message, int type)

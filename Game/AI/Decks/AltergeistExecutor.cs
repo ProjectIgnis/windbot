@@ -221,8 +221,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool isAltergeist(ClientCard card)
         {
-            return card.IsCode(CardId.Marionetter, CardId.Hexstia, CardId.Protocol, CardId.Multifaker, CardId.Meluseek,
-                CardId.Kunquery, CardId.Manifestation, CardId.Silquitous);
+            return card != null && card.HasSetcode(0x103);
         }
 
         public int GetSequence(ClientCard card)
@@ -1266,7 +1265,7 @@ namespace WindBot.Game.AI.Decks
                     if (linked_card != null && linked_card.IsCode(CardId.Hexstia))
                     {
                         int next_seq = get_Hexstia_linkzone(this_seq);
-                        if (next_seq != -1 && Bot.MonsterZone[next_seq] != null && isAltergeist(Bot.MonsterZone[next_seq].Id)) return false;
+                        if (next_seq != -1 && Bot.MonsterZone[next_seq] != null && isAltergeist(Bot.MonsterZone[next_seq])) return false;
                     }
                 }
                 return true;
@@ -1693,7 +1692,7 @@ namespace WindBot.Game.AI.Decks
                             if (target.IsCode(CardId.Hexstia))
                             {
                                 int next_index = get_Hexstia_linkzone(i);
-                                if (next_index != -1 && Bot.MonsterZone[next_index] != null && Bot.MonsterZone[next_index].IsFaceup() && isAltergeist(Bot.MonsterZone[next_index].Id)) continue;
+                                if (next_index != -1 && Bot.MonsterZone[next_index] != null && Bot.MonsterZone[next_index].IsFaceup() && isAltergeist(Bot.MonsterZone[next_index])) continue;
                             }
                             if (!get_linked_by_Hexstia(i))
                             {
@@ -2894,16 +2893,16 @@ namespace WindBot.Game.AI.Decks
                         if (cardId == CardId.Hexstia)
                         {
                             // ex zone
-                            if ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && isAltergeist(Bot.MonsterZone[1].Id)) return Zones.z5;
-                            if ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && isAltergeist(Bot.MonsterZone[3].Id)) return Zones.z6;
-                            if ( ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && !isAltergeist(Bot.MonsterZone[3].Id))
+                            if ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && isAltergeist(Bot.MonsterZone[1])) return Zones.z5;
+                            if ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && isAltergeist(Bot.MonsterZone[3])) return Zones.z6;
+                            if ( ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && !isAltergeist(Bot.MonsterZone[3]))
                                 || ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] == null) ) return Zones.z5;
-                            if (((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && !isAltergeist(Bot.MonsterZone[1].Id))
+                            if (((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && !isAltergeist(Bot.MonsterZone[1]))
                                 || ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] == null)) return Zones.z6;
                             // main zone
                             for (int i = 1; i < 5; ++i)
                             {
-                                if (Bot.MonsterZone[i] != null && isAltergeist(Bot.MonsterZone[i].Id))
+                                if (Bot.MonsterZone[i] != null && isAltergeist(Bot.MonsterZone[i]))
                                 {
                                     if ((available & (int)System.Math.Pow(2, i - 1)) > 0) return (int)System.Math.Pow(2, i - 1);
                                 }

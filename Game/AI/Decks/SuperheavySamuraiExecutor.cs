@@ -104,7 +104,7 @@ namespace WindBot.Game.AI.Decks
 
             //Synchron
             AddExecutor(ExecutorType.SpSummon, CardId.PSYFramelordOmega,PSYFramelordOmegaSynchronFunction);
-            
+
         //Pendulum
             AddExecutor(ExecutorType.Activate, CardId.Wakaushi,WakaushiFunction);
             AddExecutor(ExecutorType.Activate, CardId.Wakaushi,WakaushiEffectFunction);
@@ -127,7 +127,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.Booster,BoosterFunction);
             AddExecutor(ExecutorType.SpSummon, CardId.GearGigant,GearGigantXyzFunction);
             AddExecutor(ExecutorType.Activate, CardId.GearGigant,GearGigantFunction);
-            
+
         //equip Soulpiercer
             AddExecutor(ExecutorType.Activate, CardId.Soulpiercer,SoulpiercerEquipFunction);
 
@@ -1072,7 +1072,7 @@ namespace WindBot.Game.AI.Decks
                     if (card == null) continue;
                     else if (materials.Count(ccard =>ccard != null && ccard.Id == card.Id) <= 0) materials.Add(card);
                 }
-            } 
+            }
             else
             {
                 foreach (var card in UnTunrercards)

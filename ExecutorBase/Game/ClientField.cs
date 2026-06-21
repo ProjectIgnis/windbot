@@ -215,7 +215,7 @@ namespace WindBot.Game
         {
             return HasInCards(Graveyard, cardId);
         }
-    
+
         public bool HasInGraveyard(IList<int> cardId)
         {
             return HasInCards(Graveyard, cardId);

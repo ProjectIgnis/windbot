@@ -110,11 +110,22 @@ namespace WindBot.Game.AI
             // For overriding
         }
 
-        public virtual void OnPlayerHint(int player, long hintType, int description)
+        /// <summary>
+        /// Called when a PlayerHint is received (e.g. effect description add/remove; can be used to track "once per turn" usage).
+        /// </summary>
+        /// <param name="player">Player index</param>
+        /// <param name="hintType">Hint type, see PlayerHintType (DescAdd=6, DescRemove=7)</param>
+        /// <param name="description">Effect description id (peffect->description)</param>
+        public virtual void OnPlayerHint(int player, long hintType, ulong description)
         {
             // For overriding
         }
 
+        /// <summary>
+        /// Called when a zone hint is received.
+        /// </summary>
+        /// <param name="player">Player index.</param>
+        /// <param name="zone">Zone data (hinted zones, bit field).</param>
         public virtual void OnHintZone(int player, int zone)
         {
             // For overriding
@@ -125,6 +136,10 @@ namespace WindBot.Game.AI
             // For overriding
         }
 
+        /// <summary>
+        /// Called when card is successfully special summoned.
+        /// Used on monsters that can only special summoned once per turn.
+        /// </summary>
         public virtual void OnSpSummoned()
         {
             // For overriding

@@ -18,6 +18,7 @@ namespace WindBot.Game
 
         public Dialogs _dialogs;
         private System.Action<string, int> _log;
+        private System.Action _surrender;
 
         // record activated count to prevent infinite actions
         private Dictionary<int, int> _activatedCards;
@@ -27,12 +28,25 @@ namespace WindBot.Game
             _log(message, (int)level);
         }
 
-        public GameAI(Duel duel, string dialog, System.Action<string, bool> chat, System.Action<string, int> log, string path)
+        public GameAI(Duel duel, string dialog, System.Action<string, bool> chat, System.Action<string, int> log, System.Action surrender, string path)
         {
             Duel = duel;
             _log = log;
+            _surrender = surrender;
             _dialogs = new Dialogs(dialog, chat, path);
             _activatedCards = new Dictionary<int, int>();
+        }
+
+        private void CheckSurrender()
+        {
+            foreach (CardExecutor exec in Executor.Executors)
+            {
+                if (exec.Type == ExecutorType.Surrender && exec.Func())
+                {
+                    _dialogs.SendSurrender();
+                    _surrender();
+                }
+            }
         }
 
         /// <summary>
@@ -116,13 +130,19 @@ namespace WindBot.Game
             m_materialSelectorHint = 0;
             m_option = -1;
             m_yesno = -1;
-           
+            m_announce = 0;
+
             m_place = 0;
             if (Duel.Player == 0 && Duel.Phase == DuelPhase.Draw)
             {
                 _dialogs.SendNewTurn();
             }
             Executor.OnNewPhase();
+            CheckSurrender();
+        }
+        public void OnMove(ClientCard card, int previousControler, int previousLocation, int currentControler, int currentLocation)
+        {
+            Executor.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
         }
 
         /// <summary>
@@ -131,6 +151,7 @@ namespace WindBot.Game
         public void OnDirectAttack(ClientCard card)
         {
             _dialogs.SendOnDirectAttack(card.Name);
+            CheckSurrender();
         }
 
         /// <summary>
@@ -147,7 +168,16 @@ namespace WindBot.Game
         {
             Executor.OnChainSolved(chainIndex);
         }
-        
+
+        /// <summary>
+        /// Called when card is successfully special summoned.
+        /// Used on monsters that can only special summoned once per turn.
+        /// </summary>
+        public void OnSpSummoned()
+        {
+            Executor.OnSpSummoned();
+        }
+
         /// <summary>
         /// Called when a chain has been solved.
         /// </summary>
@@ -156,6 +186,38 @@ namespace WindBot.Game
             m_selector.Clear();
             m_selector_pointer = -1;
             Executor.OnChainEnd();
+            CheckSurrender();
+        }
+
+        /// <summary>
+        /// Called when a PlayerHint message is received (e.g. effect description add/remove hints).
+        /// </summary>
+        /// <param name="player">Player index</param>
+        /// <param name="hintType">Hint type, see PlayerHintType (DescAdd=6, DescRemove=7)</param>
+        /// <param name="description">Effect description id (peffect->description)</param>
+        public void OnPlayerHint(int player, int hintType, ulong description)
+        {
+            Executor.OnPlayerHint(player, hintType, description);
+        }
+
+        /// <summary>
+        /// Called when a zone hint is received.
+        /// </summary>
+        /// <param name="player">Player index.</param>
+        /// <param name="zone">Zone data (hinted zones, bit field).</param>
+        public void OnHintZone(int player, int zone)
+        {
+            Executor.OnHintZone(player, zone);
+        }
+
+        /// <summary>
+        /// Called when receiving annouce
+        /// </summary>
+        /// <param name="player">Player who announce.</param>
+        /// <param name="data">Annouced info.</param>
+        public void OnReceivingAnnouce(int player, long data)
+        {
+            Executor.OnReceivingAnnouce(player, data);
         }
 
         /// <summary>
@@ -308,6 +370,8 @@ namespace WindBot.Game
             // Always select the first available cards and choose the minimum.
             IList<ClientCard> selected = new List<ClientCard>();
 
+            if (hint == HintMsg.AttackTarget && cancelable) return selected;
+
             if (cards.Count >= min)
             {
                 for (int i = 0; i < min; ++i)
@@ -322,8 +386,9 @@ namespace WindBot.Game
         /// <param name="cards">List of activable cards.</param>
         /// <param name="descs">List of effect descriptions.</param>
         /// <param name="forced">You can't return -1 if this param is true.</param>
+        /// <param name="timing">Current hint timing</param>
         /// <returns>Index of the activated card or -1.</returns>
-        public int OnSelectChain(IList<ClientCard> cards, IList<long> descs, bool forced)
+        public int OnSelectChain(IList<ClientCard> cards, IList<long> descs, bool forced, int timing = -1)
         {
             Executor.OnSelectChain(cards);
             foreach (CardExecutor exec in Executor.Executors)
@@ -341,7 +406,7 @@ namespace WindBot.Game
             // If we're forced to chain, we chain the first card. However don't do anything.
             return forced ? 0 : -1;
         }
-        
+
         /// <summary>
         /// Called when the AI has to use one or more counters.
         /// </summary>
@@ -411,6 +476,7 @@ namespace WindBot.Game
         /// <returns>A new MainPhaseAction containing the action to do.</returns>
         public MainPhaseAction OnSelectIdleCmd(MainPhase main)
         {
+            CheckSurrender();
             foreach (CardExecutor exec in Executor.Executors)
             {
                 if (exec.Type == ExecutorType.GoToEndPhase && main.CanEndPhase && exec.Func()) // check if should enter end phase directly
@@ -423,7 +489,7 @@ namespace WindBot.Game
                     return new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase);
                 }
                 // NOTICE: GoToBattlePhase and GoToEndPhase has no "card" can be accessed to ShouldExecute(), so instead use exec.Func() to check ...
-                // enter end phase and enter battle pahse is in higher priority. 
+                // enter end phase and enter battle pahse is in higher priority.
 
                 for (int i = 0; i < main.ActivableCards.Count; ++i)
                 {
@@ -484,7 +550,7 @@ namespace WindBot.Game
                 return new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase);
 
             _dialogs.SendEndTurn();
-            return new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase); 
+            return new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase);
         }
 
         /// <summary>
@@ -779,7 +845,7 @@ namespace WindBot.Game
         // _ Others functions _
         // Those functions are used by the AI behavior.
 
-        
+
         private CardSelector m_materialSelector;
         private int m_materialSelectorHint;
         private int m_place;
