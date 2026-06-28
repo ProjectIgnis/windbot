@@ -22,7 +22,7 @@ jobs:
         draft: true
         prerelease: false
   Desktop:
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     needs: create_release
     env:
       TRAVIS_OS_NAME: windows
@@ -40,7 +40,7 @@ jobs:
       run: |
         ./ci/install-net-4.0.sh
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
     - name: Build
       shell: bash
       run: |
@@ -67,9 +67,14 @@ jobs:
       with:
         release_id: ${{ needs.create_release.outputs.output }}
         assets_path: assets
+    - name: Upload Build artifact
+      id: upload-release-assets
+      uses: actions/upload-artifact@v7
+      with:
+        path: assets
 
   Android:
-    runs-on: windows-2022
+    runs-on: windows-2025-vs2026
     needs: create_release
     env:
       TRAVIS_OS_NAME: android
@@ -87,12 +92,12 @@ jobs:
       run: |
         ./ci/install-net-4.0.sh
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
 # Unspecified dependency for Embeddinator; 64-bit does not work
     - name: Install mono and SDK 24, SDK 25 and NDK 15
       shell: bash
       env:
-        VS_PREFIX: "17.0_"
+        VS_PREFIX: "18.0_"
       run: |
         choco install mono --x86 --ignore-checksums & ./ci/install-sdk-ndk.sh & wait
     - name: Build
@@ -118,6 +123,11 @@ jobs:
       with:
         release_id: ${{ needs.create_release.outputs.output }}
         assets_path: assets
+    - name: Upload Build artifact
+      id: upload-release-assets
+      uses: actions/upload-artifact@v7
+      with:
+        path: assets
 
 
 # assets to upload android
