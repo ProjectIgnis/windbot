@@ -68,7 +68,6 @@ jobs:
         release_id: ${{ needs.create_release.outputs.output }}
         assets_path: assets
     - name: Upload Build artifact
-      id: upload-release-assets
       uses: actions/upload-artifact@v7
       with:
         path: assets
@@ -124,7 +123,6 @@ jobs:
         release_id: ${{ needs.create_release.outputs.output }}
         assets_path: assets
     - name: Upload Build artifact
-      id: upload-release-assets
       uses: actions/upload-artifact@v7
       with:
         path: assets
