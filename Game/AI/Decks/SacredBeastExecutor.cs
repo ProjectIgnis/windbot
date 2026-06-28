@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using WindBot;
@@ -103,10 +103,10 @@ namespace WindBot.Game.AI.Decks
         const int SetcodeTimeLord = 0x4a;
         const int SetcodePhantom = 0xdb;
         const int SetcodeOrcust = 0x11b;
-        const int SetcodeHorus = 0x19d;
+        const int SetcodeHorus = 0x3;
         const int SetcodeDarkWorld = 0x6;
         const int SetcodeSkyStriker = 0x115;
-        const int SetcodeSacredBeast = 0x1144;
+        const int SetcodeSacredBeast = 0x1145;
 
         List<int> notToNegateIdList = new List<int> { 58699500, 20343502, 19403423 };
         List<int> notToDestroySpellTrap = new List<int> { 50005218, 6767771 };
@@ -245,7 +245,7 @@ namespace WindBot.Game.AI.Decks
             base.OnNewTurn();
         }
         public override bool OnSelectHand() { return true; /* Go first by default.*/}
-        public override int OnSelectOption(IList<int> options)
+        public override int OnSelectOption(IList<long> options)
         {
             ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
             Logger.DebugWriteLine($"OnSelectOption: CurrentSolving={currentSolvingChain} count={options.Count} options=[{string.Join(", ", options.Select((v, i) => $"{i}:{v}"))}]");
@@ -270,7 +270,7 @@ namespace WindBot.Game.AI.Decks
             Logger.DebugWriteLine("OnSelectOption Default");
             return base.OnSelectOption(options);
         }
-        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
             Logger.DebugWriteLine( "OnSelectCard " + cards.Count + " " + min + " " + max + " hint=" + hint  + " cancelable=" + cancelable + " cards=["+string.Join(", ", cards.Select(c => c == null ? "null" : $"{c.Name}({c.Id}) C{c.Controller} L{c.Location}")) + "]");
@@ -1431,13 +1431,14 @@ namespace WindBot.Game.AI.Decks
             if (CheckWhetherNegated()) return false;
 
             List<ClientCard> targetList = GetNormalEnemyTargetList(true, true);
-            int desc = ActivateDescription;
-            int d1 = Util.GetStringId(CardId.VarudrasTheFinalBringer, 1);
-            int d2 = Util.GetStringId(CardId.VarudrasTheFinalBringer, 2);
+            long desc = ActivateDescription;
+            long d0 = Util.GetStringId(CardId.VarudrasTheFinalBringer, 0);
+            long d1 = Util.GetStringId(CardId.VarudrasTheFinalBringer, 1);
+            long d2 = Util.GetStringId(CardId.VarudrasTheFinalBringer, 2);
 
             var enemyPick = targetList.FirstOrDefault(c => c != null && c.Controller == 1);
 
-            if (desc == d1 && Duel.LastChainPlayer == 1 && Duel.CurrentChain.Count > 0)
+            if (desc == d0 && Duel.LastChainPlayer == 1 && Duel.CurrentChain.Count > 0)
             {
                 if (!CheckLastChainShouldNegated()) return false;
                 return true; 
@@ -2112,7 +2113,7 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location != CardLocation.SpellZone) return false;
             if (CheckWhetherNegated(true, true, CardType.Spell)) return false;
 
-            int drawDesc = Util.GetStringId(CardId.FallenParadiseOfTheSacredBeasts, 1);
+            long drawDesc = Util.GetStringId(CardId.FallenParadiseOfTheSacredBeasts, 1);
             if (ActivateDescription != drawDesc) return false;
 
             if (!Bot.HasInMonstersZone(CardId.HamonSacredBeastOfSinfulCatastrophe)
@@ -2196,7 +2197,7 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location != CardLocation.MonsterZone) return false;
             if (CheckWhetherNegated(true, false, CardType.Monster)) return false;
 
-            int wipeDesc = Util.GetStringId(CardId.RavielSacredBeastOfEndlessEternity, 1);
+            long wipeDesc = Util.GetStringId(CardId.RavielSacredBeastOfEndlessEternity, 1);
             if (ActivateDescription != wipeDesc && ActivateDescription != -1) return false;
 
             if (Enemy.GetMonsterCount() <= 0) return false;
@@ -2369,7 +2370,7 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location != CardLocation.SpellZone) return false;
             if (CheckWhetherNegated(true, true, CardType.Spell)) return false;
 
-            int summonDesc = Util.GetStringId(CardId.FallenParadiseOfTheSacredBeasts, 0);
+            long summonDesc = Util.GetStringId(CardId.FallenParadiseOfTheSacredBeasts, 0);
             if (ActivateDescription != summonDesc) return false;
 
             if (!HasFreeMonsterZone()) return false;
@@ -2761,7 +2762,7 @@ namespace WindBot.Game.AI.Decks
             if (CheckWhetherNegated(true, false, CardType.Monster)) return false;
             if (Card.Location != CardLocation.MonsterZone) return false;
 
-            int negateDesc = Util.GetStringId(CardId.SuperdreadnoughtRailCannonGustavRocket, 1);
+            long negateDesc = Util.GetStringId(CardId.SuperdreadnoughtRailCannonGustavRocket, 1);
             if (ActivateDescription != negateDesc && ActivateDescription != -1)
                 return false;
 

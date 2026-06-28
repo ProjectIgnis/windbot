@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using WindBot;
@@ -141,11 +141,11 @@ namespace WindBot.Game.AI.Decks
             _CardId.MaxxC
         };
 
-        const int SetcodeMaliss = 0x1bf;
+        const int SetcodeMaliss = 0x1b9;
         const int SetcodeTimeLord = 0x4a;
         const int SetcodePhantom = 0xdb;
         const int SetcodeOrcust = 0x11b;
-        const int SetcodeHorus = 0x19d;
+        const int SetcodeHorus = 0x3;
         const int SetcodeDarkWorld = 0x6;
         const int SetcodeSkyStriker = 0x115;
 
@@ -253,7 +253,7 @@ namespace WindBot.Game.AI.Decks
             base.OnNewTurn();
         }
         public override bool OnSelectHand() { return true; /* Go first by default.*/}
-        public override int OnSelectOption(IList<int> options)
+        public override int OnSelectOption(IList<long> options)
         {
             ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
             Logger.DebugWriteLine($"OnSelectOption: CurrentSolving={currentSolvingChain} count={options.Count} options=[{string.Join(", ", options.Select((v, i) => $"{i}:{v}"))}]");
@@ -289,7 +289,7 @@ namespace WindBot.Game.AI.Decks
             Logger.DebugWriteLine("OnSelectOption Default");
             return base.OnSelectOption(options);
         }
-        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
             Logger.DebugWriteLine("OnSelectCard " + cards.Count + " " + min + " " + max);
@@ -1569,11 +1569,11 @@ namespace WindBot.Game.AI.Decks
         }
         private bool MagiaEff()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.DragonMasterMagia, 0))
+            if (ActivateDescription == Util.GetStringId(CardId.DragonMasterMagia, 2))
             {
                 return true;
             }
-            if (ActivateDescription == Util.GetStringId(CardId.DragonMasterMagia, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.DragonMasterMagia, 3))
             {
                 ClientCard target = GetUltimateDragonMagiaFloatTarget();
                 if (target == null)
@@ -1621,13 +1621,13 @@ namespace WindBot.Game.AI.Decks
         };
         private bool UltimateSpiritEff()
         {
-            if (ActivateDescription == Util.GetStringId(CardId.BlueEyesUltimateSpiritDragon, 1))
+            if (ActivateDescription == Util.GetStringId(CardId.BlueEyesUltimateSpiritDragon, 0))
             {
                 if (CheckWhetherNegated()) return false;
                 if (Duel.LastChainPlayer != 1) return false;
                 return true;
             }
-            else if (ActivateDescription == Util.GetStringId(CardId.BlueEyesUltimateSpiritDragon, 2))
+            else if (ActivateDescription == Util.GetStringId(CardId.BlueEyesUltimateSpiritDragon, 1))
             {
                 return true;
             }

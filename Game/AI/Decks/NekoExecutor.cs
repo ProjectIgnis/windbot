@@ -14,7 +14,7 @@ namespace WindBot.Game.AI.Decks
     {
         public class SetCode
         {
-            public const int Neko = 0x1ca;
+            public const int Neko = 0x1c1;
         }
         public class CardId
         {
@@ -211,14 +211,11 @@ namespace WindBot.Game.AI.Decks
                 return CardPosition.FaceUpAttack;
             return base.OnSelectPosition(cardId, positions);
         }
-        public override int OnSelectOption(IList<int> options)
+        public override int OnSelectOption(IList<long> options)
         {
             for (int idx = 0; idx < options.Count(); ++ idx)
             {
-                int option = options[idx];
-                if (option == Util.GetStringId(CardId.Neko_Marshmallow, Duel.Player + 1))
-                    return idx;
-                
+                long option = options[idx];
                 if (option == Util.GetStringId(CardId.Neko_Quick, 1) && (Duel.Player == 1 || Duel.LastChainPlayer == 1))
                 {
                     Activate_Neko_Quick = true;
@@ -230,35 +227,34 @@ namespace WindBot.Game.AI.Decks
                     Count.AddActivate(CardId.Neko_Quick);
                     return idx;
                 }
+
+                if(option == Util.GetStringId(CardId.Neko_Cake, 2))
+                {
+                    if (Bot.Hand.Any(i => i.HasSetcode(SetCode.Neko) && !i.HasType(CardType.Field)))
+                        return idx;
+                }
+                if (option == Util.GetStringId(CardId.Neko_Cake, 3))
+                {
+                    return idx;
+                }
+
+                if (option == Util.GetStringId(CardId.Neko_Lollipop, 2) || option == Util.GetStringId(CardId.Neko_Lollipop, 3))
+                {
+                    return idx;
+                }
+
+                if (option == Util.GetStringId(CardId.Neko_Cookie, 2) || option == Util.GetStringId(CardId.Neko_Cookie, 3))
+                {
+                    return idx;
+                }
             }
             return base.OnSelectOption(options);
         }
-        public override bool OnSelectYesNo(int desc)
-        {
-            if (desc == Util.GetStringId(CardId.Neko_Cake, 2))
-                return Bot.Hand.Any(i => i.HasSetcode(SetCode.Neko) && !i.HasType(CardType.Field));
-            else if (desc == Util.GetStringId(CardId.Neko_Lollipop, 2)
-                || desc == Util.GetStringId(CardId.Neko_Cookie, 2))
-                return true;
-            else if (desc == Util.GetStringId(CardId.Neko_Marshmallow, 2))
-            {
-                if (Duel.Player == 0 && (!Bot.HasInGraveyard(CardId.Neko_Quick) || (Bot.HasInHand(CardId.Neko_Quick) && Count.CheckActivate(CardId.Neko_Quick)))
-                    && (!Count.CheckActivate(CardId.Neko_Field)
-                    || Bot.GetSpells().Any(i => i.IsCode(CardId.Neko_Field)))
-                )
-                    return false;
-                else if (Duel.Player == 1 && Bot.GetSpells().Any(i => i.IsCode(CardId.Neko_Field_II)))
-                    return false;
-                return true;
-            }
-
-            return base.OnSelectYesNo(desc);
-        }
-        public override int OnSelectPlace(int cardId, int player, CardLocation location, int available)
+        public override int OnSelectPlace(long cardId, int player, CardLocation location, int available)
         {
             if (player == 0 && location == CardLocation.MonsterZone)
             {
-                if (cardId == CardId.Shamisen_Samsara_Sorrowcat && Bot.HasInExtra(CardId.Gravity_Controller) && Count.CheckActivate(cardId))
+                if (cardId == CardId.Shamisen_Samsara_Sorrowcat && Bot.HasInExtra(CardId.Gravity_Controller) && Count.CheckActivate((int)cardId))
                 {
                     if ((Zones.z6 & available) > 0) return Zones.z6;
                     if ((Zones.z5 & available) > 0) return Zones.z5;
@@ -286,7 +282,7 @@ namespace WindBot.Game.AI.Decks
             }
             return base.OnSelectPlace(cardId, player, location, available);
         }
-        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, int hint, bool cancelable)
+        public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             if (AI.HaveSelectedCards()) return null;
             ClientCard card = Duel.GetCurrentSolvingChainCard();
@@ -511,6 +507,26 @@ namespace WindBot.Game.AI.Decks
                             .Concat(cards.Where(i => !i.IsCode(new [] {CardId.Neko_Marshmallow, CardId.Neko_Cake})))
                             .ToList();
                         return Util.CheckSelectCount(result.GroupBy(x => x.Id).Select(g => g.First()).ToList(), cards, max, max);
+                    }
+                case CardId.Neko_Marshmallow:
+                    {
+                        if (hint == Util.GetStringId(CardId.Neko_Marshmallow, 2))
+                        {
+                            List<ClientCard> result;
+                            if ((Duel.Player == 0 && (!Bot.HasInGraveyard(CardId.Neko_Quick) || (Bot.HasInHand(CardId.Neko_Quick) && Count.CheckActivate(CardId.Neko_Quick)))
+                                && (!Count.CheckActivate(CardId.Neko_Field)
+                                || Bot.GetSpells().Any(i => i.IsCode(CardId.Neko_Field)))
+                            ) || (Duel.Player == 1 && Bot.GetSpells().Any(i => i.IsCode(CardId.Neko_Field_II))))
+                            {
+                                result = cards.Where(i => i.Location == CardLocation.Deck || i.Location == CardLocation.Removed).ToList();
+                            } else
+                            {
+                                result = cards.Where(i => i.Location == CardLocation.Grave).ToList();
+                            }
+                            if(result.Count() != 0)
+                                return Util.CheckSelectCount(result.GroupBy(x => x.Id).Select(g => g.First()).ToList(), cards, max, max);
+                        }
+                        break;
                     }
 
             }

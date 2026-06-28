@@ -1,4 +1,4 @@
-﻿namespace WindBot.Game.AI.Enums
+namespace WindBot.Game.AI.Enums
 {
     /// <summary>
     /// Cards that restrict player from performing some action. Bot will preferentially destroy them.
@@ -308,23 +308,15 @@
         PossessedResonanceWynn = 60516416,
         CrimsonBladerAssaultMode = 50604072,
         SuperBESMetalSlave = 41516133,
-        ZalenTheShackledDragon = 4891376,
         K9XRipperM = 31286915,
-        ExosisterKarmael = 77675029,
         TopologicBlasterDragon = 30064423,
-        BorrelshroudDragon = 66452432,
         Elfnotes_RhapsodiaOfMadness = 24092792,
         ArchfiendsFervor = 13379114,
         CommanderSouzaSwordmaster = 72867001,
         DragunityLordGeorgius = 70522875,
         RedNovaDragonAssaultMode = 82323997,
-        StarvingVenomWingDragon = 5148778,
         TellerOfFairyTails = 4026187,
-        RedHypernovaDragon = 30698243,
-        SuperdreadnoughtRailCannonGustavRocket = 92359409,
         SummonShock = 42719764,
-        WPFancyBall = 4993187,
-        CrimsonDragonQuetzacoatl = 29053656,
         PhantasmalSacredBeastsOfChaos = 7894706,
         InvokedOkeanos = 6772168,
         SForceMystify = 4611341,

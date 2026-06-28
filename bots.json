@@ -24,6 +24,12 @@
         "masterRules": [ 3, 4, 5 ]
     },
     {
+        "name": "Blue-Eyes 2025",
+        "deck": "BE2025",
+        "difficulty": 4,
+        "masterRules": [ 5 ]
+    },
+    {
         "name": "Blue-Eyes Ritual",
         "deck": "BlueEyesMaxDragon",
         "difficulty": 2,
@@ -216,6 +222,12 @@
         "masterRules": [ 5 ]
     },
     {
+        "name": "Sacred Beast",
+        "deck": "SacredBeast",
+        "difficulty": 4,
+        "masterRules": [ 3, 5 ]
+    },
+    {
         "name": "Salamangreat",
         "deck": "Salamangreat",
         "difficulty": 3,
@@ -291,6 +303,12 @@
         "name": "Yubel",
         "deck": "Yubel",
         "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
+        "name": "Yummy",
+        "deck": "Neko",
+        "difficulty": 4,
         "masterRules": [ 5 ]
     },
     {
