@@ -23,6 +23,7 @@ jobs:
         prerelease: false
   Desktop:
     runs-on: windows-2025-vs2026
+    if: false
     needs: create_release
     env:
       TRAVIS_OS_NAME: windows
@@ -87,16 +88,12 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - name: Install .NET 4.0
-      shell: bash
-      run: |
-        ./ci/install-net-4.0.sh
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v3
     - name: Install Xamarin
       shell: pwsh
       run: |
-        Set-Location "C:\Program Files (x86)\Microsoft Visual Studio\Installer\"
+        Set-Location "C:\Program Files\Microsoft Visual Studio\Installer\"
         $InstallPath = "C:\Program Files\Microsoft Visual Studio\2026\Enterprise"
         $componentsToAdd = @(
           "Component.Xamarin"
@@ -113,6 +110,10 @@ jobs:
             Write-Host "components were not installed"
             exit 1
         }
+    - name: Install .NET 4.0
+      shell: bash
+      run: |
+        ./ci/install-net-4.0.sh
 # Unspecified dependency for Embeddinator; 64-bit does not work
     - name: Install mono and SDK 24, SDK 25 and NDK 15
       shell: bash
