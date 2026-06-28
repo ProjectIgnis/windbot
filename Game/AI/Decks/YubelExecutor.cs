@@ -98,7 +98,7 @@ namespace WindBot.Game.AI.Decks
                                 CardId.YUBEL, CardId.YUBEL_TERROR_INCARNATE, CardId.ABOMINABLE_CHAMBER,
                                 _CardId.CrossoutDesignator, CardId.GRUESOME_GRAVE_SQUIRMER, CardId.FABLED_LURRIE,
                                 CardId.NIGHTMARE_PAIN, CardId.TERRAFORMING, CardId.FIENDSMITH_TRACT,CardId.SHARVARA,
-                                CardId.CHAOS_SUMMONING_BEAST, CardId.LACRIMA_CT 
+                                CardId.CHAOS_SUMMONING_BEAST, CardId.LACRIMA_CT
                                 } }
         };
 
@@ -128,7 +128,7 @@ namespace WindBot.Game.AI.Decks
         };
 
         private static readonly HashSet<int> YUBEL_SET = new HashSet<int> { CardId.YUBEL, CardId.YUBEL_TERROR_INCARNATE, CardId.SPIRIT_OF_YUBEL, CardId.PHANTOM_OF_YUBEL };
-        
+
         public YubelExecutor(GameAI ai, Duel duel) : base(ai, duel)
         {
 
@@ -139,7 +139,7 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, _CardId.InfiniteImpermanence, InfiniteImpermanenceActivate);
             AddExecutor(ExecutorType.Activate, _CardId.AshBlossom, AshBlossomActivate);
             AddExecutor(ExecutorType.Activate, _CardId.MaxxC, MaxxCActivate);
-            
+
             // ===== Yubel-related =====
             AddExecutor(ExecutorType.Activate, CardId.SAMSARA_D_LOTUS, ActSamsaraDLotusGY);
             AddExecutor(ExecutorType.Activate, CardId.YUBEL);
@@ -1041,7 +1041,7 @@ namespace WindBot.Game.AI.Decks
             _gateReviveTargetId = 0;
             _gateDiscardPreferredId = 0;
             _gateWantsRecycle = false;
-            
+
             base.OnNewTurn();
         }
 
@@ -1139,7 +1139,7 @@ namespace WindBot.Game.AI.Decks
             return Bot.ExtraDeck.Any(c => c != null && c.Id == id);
         }
         // --- State for Nightmare Throne prompt flow ---
-        
+
 
         #region Work Space #1
         private bool DontSelfNG() { return Duel.LastChainPlayer != 0; }
@@ -1320,7 +1320,7 @@ namespace WindBot.Game.AI.Decks
         {
             // e2: ทิ้งมือ 1 → SS Fiend 0/0 จากสุสาน
             if (Card.Location != CardLocation.SpellZone) return false;
-            
+
             if (requiemSummoned)
             {
                 if (!Bot.HasInHandOrInGraveyard(CardId.SPIRIT_OF_YUBEL)) return false; // ต้องมีในหลุม
@@ -1417,7 +1417,7 @@ namespace WindBot.Game.AI.Decks
             if (Card.Location == CardLocation.Grave)
             {
                 if (Bot.HasInMonstersZone(CardId.YUBEL))
-                { 
+                {
                     AI.SelectOption(1);
                     return true;
                 }
@@ -1477,10 +1477,10 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location != CardLocation.MonsterZone) { return false; }
             if (Bot.HasInHand(CardId.LACRIMA_CT) || CheckRemainInDeck(CardId.LACRIMA_CT) > 0)
-            { 
+            {
                 AI.SelectCard(CardId.LACRIMA_CT);
                 AI.SelectPosition(CardPosition.FaceUpDefence);
-                return true; 
+                return true;
             }
             else if (Bot.HasInHand(CardId.FIENDSMITH_ENGRAVER) || CheckRemainInDeck(CardId.FIENDSMITH_ENGRAVER) > 0)
             {
@@ -1496,9 +1496,9 @@ namespace WindBot.Game.AI.Decks
             if (!HasInExtra(CardId.NECROQUIP)) { return false; }
             if (Card.Location != CardLocation.Grave) { return false; }
             if (Bot.HasInMonstersZone(CardId.LACRIMA_CT))
-            {   
+            {
                 AI.SelectCard(CardId.LACRIMA_CT);
-                return true; 
+                return true;
             }
             else if (Bot.HasInMonstersZone(CardId.FIENDSMITH_ENGRAVER))
             {
@@ -1625,7 +1625,7 @@ namespace WindBot.Game.AI.Decks
             {
                 AI.SelectYesNo(true);
                 AI.SelectCard(CardId.SPIRIT_OF_YUBEL);
-                return true; 
+                return true;
             }
             AI.SelectYesNo(false);
             return true;
@@ -2112,7 +2112,7 @@ namespace WindBot.Game.AI.Decks
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
             Logger.DebugWriteLine($"[DEBUG] OnSelectCard: hint={hint} (0x{hint:X}), min={min}, max={max}, cancelable={cancelable}, candidates={cards?.Count ?? 0}");
-            
+
             bool isReleasePrompt =
             hint == (long)HintMsg.Release ||
             hint.ToString().ToLower().Contains("release"); // กันเหนียว
@@ -2137,7 +2137,7 @@ namespace WindBot.Game.AI.Decks
                     return new[] { chosen };
                 }
                 // === SPIRIT GATES selections ===
-                if (Card != null && Card.Id == CardId.SPIRIT_GATES && cards != null && cards.Count > 0)
+                if (solving != null && solving.Id == CardId.SPIRIT_GATES && cards != null && cards.Count > 0)
                 {
                     // 2.1: เลือก Continuous Spell จากสุสาน (Recycle)
                     if (_gateWantsRecycle)
@@ -2164,7 +2164,7 @@ namespace WindBot.Game.AI.Decks
 
                     // เลือกเป้าหมายชุบจากสุสาน (Fiend 0/0)
                     bool selectingGYTarget = cards.Any(c => c != null && c.Location == CardLocation.Grave);
-                    
+
                     if (selectingGYTarget)
                     {
                         if (requiemSummoned)
@@ -2210,7 +2210,7 @@ namespace WindBot.Game.AI.Decks
                     }
                 }
                 // === Throne: Select card (เลือกการ์ดที่ค้นเจอ) ===
-                if (Card.Id == CardId.NIGHTMARE_THRONE && _throneStage == ThroneStage.Searching && thronePending && !throneSearched)
+                if (solving != null && solving.Id == CardId.NIGHTMARE_THRONE && _throneStage == ThroneStage.Searching && thronePending && !throneSearched)
                 {
                     throneSearched = true;
                     _throneStage = ThroneStage.AwaitDestroyPrompt;
@@ -2235,7 +2235,7 @@ namespace WindBot.Game.AI.Decks
                     // ปล่อยให้ base ตัดสินใจ หรือจะ return null ก็ได้ตามฐานของคุณ
                 }
                 // --- Varudras: เลือกเป้าหมายทำลาย ---
-                if (Card.Id == CardId.VARUDASN_FINAL_BRINGER && hint == 502 && cards != null && cards.Count > 0)
+                if (solving != null && solving.Id == CardId.VARUDASN_FINAL_BRINGER && hint == 502 && cards != null && cards.Count > 0)
                 {
                     // พยายามเลือกฝั่งศัตรูก่อน (คัดใบที่อันตราย/ป่วนที่สุด)
                     ClientCard enemyPick = cards
@@ -2247,7 +2247,7 @@ namespace WindBot.Game.AI.Decks
                     return new[] { cards[0] }; // fallback
                 }
                 // --- Abomination: เลือกเป้าหมายทำลาย ---
-                if (Card.Id == CardId.UNCHAINDEDABOMINATION && hint == 502 && cards != null && cards.Count > 0)
+                if (solving != null && solving.Id == CardId.UNCHAINDEDABOMINATION && hint == 502 && cards != null && cards.Count > 0)
                 {
                     // พยายามเลือกฝั่งศัตรูก่อน (คัดใบที่อันตราย/ป่วนที่สุด)
                     ClientCard enemyPick = cards
@@ -2280,11 +2280,11 @@ namespace WindBot.Game.AI.Decks
                     return new List<ClientCard> { cards[0] };
                 }
             }
-            
+
 
             return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
-        
+
         // --- Scoring helpers -------------------------------------------------
         private int ScoreOwnCardForCost(ClientCard c)
         {

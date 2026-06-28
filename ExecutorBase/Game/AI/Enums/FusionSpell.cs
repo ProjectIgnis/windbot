@@ -122,6 +122,10 @@
         OverloadFutureFusion = 33099732,
         FutureFusionNova = 92058902,
         RevolutionCyberDragon = 66664203,
-        StarvingVenomFusionDragonoftheFourHeavenlyDragons = 27118421
+        StarvingVenomFusionDragonoftheFourHeavenlyDragons = 27118421,
+        PenetrationFusion = 8778267,
+        SurpriseFusion = 35167375,
+        InvocationSword = 37432075,
+        WitchcrafterTerracottan = 70686400
     }
 }

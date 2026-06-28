@@ -1,4 +1,4 @@
-﻿namespace WindBot.Game.AI.Enums
+namespace WindBot.Game.AI.Enums
 {
     /// <summary>
     /// Monsters that release or banish itself to use effect. So them should be disabled (with Breakthrough Skill) before it use effect.
@@ -72,6 +72,8 @@
         TestBear = 62076252,
         RescueHedgehog = 99742859,
         SuperQuantalFairyZetan = 66646087,
-        LightWaterDragon = 82616239
+        LightWaterDragon = 82616239,
+        RescueACEQuickAttacker = 47425162,
+        MysticalCelticSage = 50073633
     }
 }

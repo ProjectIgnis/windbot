@@ -1,4 +1,4 @@
-﻿﻿namespace WindBot.Game.AI.Enums
+namespace WindBot.Game.AI.Enums
 {
     /// <summary>
     /// Cards that are can't be selected as target of monster's effect, or immune to monster's effect.
@@ -23,6 +23,7 @@
         JunkWarriorAssaultMode = 23219323,
         ArchfiendEmperor = 48469380,
         DoomReginaArchfiend = 78744660,
-        PerfectronHydradriveDragon = 13203964
+        PerfectronHydradriveDragon = 13203964,
+        VidoliumTheUnstablePowerPatronOfUnity = 70488851
     }
 }
