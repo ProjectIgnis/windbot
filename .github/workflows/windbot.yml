@@ -103,7 +103,7 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        msbuild.exe -t:restore WindBot.sln
+        dotnet restore WindBot.sln
         ./ci/install-patched-mono-runtime.sh
         msbuild.exe -m -p:Configuration=Release WindBot.sln
     - name: Predeploy
