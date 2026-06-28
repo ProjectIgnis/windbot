@@ -1,4 +1,4 @@
-using YGOSharp.OCGWrapper.Enums;
+﻿using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using System.Linq;
 using WindBot;
@@ -86,7 +86,7 @@ namespace WindBot.Game.AI.Decks
         private List<long> HintMsgForEnemy = new List<long>
         {
             HintMsg.Release, HintMsg.Destroy, HintMsg.Remove, HintMsg.ToGrave, HintMsg.ReturnToHand, HintMsg.ToDeck,
-            HintMsg.FusionMaterial, HintMsg.SynchroMaterial, HintMsg.XyzMaterial, HintMsg.LinkMaterial
+            HintMsg.FusionMaterial, HintMsg.SynchroMaterial, HintMsg.XyzMaterial, HintMsg.LinkMaterial, HintMsg.Disable
         };
 
         private List<long> HintMsgForDeck = new List<long>
@@ -219,11 +219,13 @@ namespace WindBot.Game.AI.Decks
 
         private bool ImFeelingLucky()
         {
+            if (Type == ExecutorType.Activate && DefaultCheckWhetherCardIsNegated(Card)) return false;
             return Program.Rand.Next(10) >= 5 && DefaultDontChainMyself();
         }
 
         private bool ImFeelingUnlucky()
         {
+            if (Type == ExecutorType.Activate && DefaultCheckWhetherCardIsNegated(Card)) return false;
             return DefaultDontChainMyself();
         }
 

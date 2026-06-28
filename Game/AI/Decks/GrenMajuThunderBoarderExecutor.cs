@@ -1,4 +1,4 @@
-using YGOSharp.OCGWrapper.Enums;
+﻿using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using WindBot;
 using WindBot.Game;
@@ -128,6 +128,7 @@ namespace WindBot.Game.AI.Decks
         {            
             eater_eff = false;
             CardOfDemiseeff_used = false;
+            base.OnNewTurn();
         }
 
         public override void OnNewPhase()
@@ -437,6 +438,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool ThunderKingRaiOheff()
         {
+           if (DefaultOnlyHorusSpSummoning()) return false;
            if(Duel.SummoningCards.Count > 0)
            {
                 foreach(ClientCard m in Duel.SummoningCards)
@@ -570,6 +572,7 @@ namespace WindBot.Game.AI.Decks
 
         private bool MetalSnakesp()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (ActivateDescription == Util.GetStringId(CardId.MetalSnake, 0) && !Bot.HasInMonstersZone(CardId.MetalSnake))
             {
                 if(Duel.Player == 1 && Duel.Phase >= DuelPhase.BattleStart )

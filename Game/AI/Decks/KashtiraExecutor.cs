@@ -1,7 +1,9 @@
 using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using System.Linq;
-
+using WindBot;
+using WindBot.Game;
+using WindBot.Game.AI;
 namespace WindBot.Game.AI.Decks
 {
     [Deck("Kashtira", "AI_Kashtira")]
@@ -173,6 +175,7 @@ namespace WindBot.Game.AI.Decks
             opt_2 = false;
             if (flag >= 0) ++flag;
             if (flag >= 2) { flag = -1; activate_DimensionShifter = false; }
+            base.OnNewTurn();
         }
         public override bool OnSelectYesNo(long desc)
         {

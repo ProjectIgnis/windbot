@@ -10,11 +10,11 @@ namespace YGOSharp.OCGWrapper
 {
     public static class NamedCardsManager
     {
-        private static IDictionary<int, NamedCard> _cards = new Dictionary<int, NamedCard>();
+        private static IDictionary<long, NamedCard> _cards = new Dictionary<long, NamedCard>();
 
         public static void SetThreadSafe()
         {
-            _cards = new ConcurrentDictionary<int, NamedCard>();
+            _cards = new ConcurrentDictionary<long, NamedCard>();
         }
 
         public static void LoadDatabase(string databaseFullPath)
@@ -51,7 +51,7 @@ namespace YGOSharp.OCGWrapper
             }
         }
 
-        internal static NamedCard GetCard(int id)
+        internal static NamedCard GetCard(long id)
         {
             if (_cards.ContainsKey(id))
                 return _cards[id];

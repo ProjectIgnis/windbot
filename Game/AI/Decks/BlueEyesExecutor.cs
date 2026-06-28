@@ -131,6 +131,7 @@ namespace WindBot.Game.AI.Decks
             UsedGalaxyEyesCipherDragon = null;
             AlternativeWhiteDragonSummoned = false;
             SoulChargeUsed = false;
+            base.OnNewTurn();
         }
 
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
@@ -146,7 +147,8 @@ namespace WindBot.Game.AI.Decks
                 return Util.CheckSelectCount(result, cards, min, max);
             }
             Logger.DebugWriteLine("Use default.");
-            return null;
+
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
 
         public override IList<ClientCard> OnSelectXyzMaterial(IList<ClientCard> cards, int min, int max)
@@ -173,6 +175,22 @@ namespace WindBot.Game.AI.Decks
             }
 
             return null;
+        }
+
+        public override void OnSpSummoned()
+        {
+            // not special summoned by chain
+            if (Duel.GetCurrentSolvingChainCard() == null)
+            {
+                foreach (ClientCard card in Duel.LastSummonedCards)
+                {
+                    if (card.Controller == 0 && card.IsCode(CardId.AlternativeWhiteDragon))
+                    {
+                        AlternativeWhiteDragonSummoned = true;
+                    }
+                }
+            }
+            base.OnSpSummoned();
         }
 
         private bool DragonShrineEffect()
@@ -499,7 +517,6 @@ namespace WindBot.Game.AI.Decks
 
         private bool AlternativeWhiteDragonSummon()
         {
-            AlternativeWhiteDragonSummoned = true;
             return true;
         }
 

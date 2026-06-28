@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using YGOSharp.OCGWrapper.Enums;
 using System;
 using System.Linq;
@@ -25,6 +25,15 @@ namespace WindBot.Game.AI
             return 1;
         }
 
+        public static int CompareCardLink(ClientCard cardA, ClientCard cardB)
+        {
+            if (cardA.LinkCount < cardB.LinkCount)
+                return -1;
+            if (cardA.LinkCount == cardB.LinkCount)
+                return 0;
+            return 1;
+        }
+
         public static int CompareDefensePower(ClientCard cardA, ClientCard cardB)
         {
             if (cardA == null && cardB == null)
@@ -46,28 +55,32 @@ namespace WindBot.Game.AI
         {
             return cards
                 .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && !(canBeTarget && card.IsShouldNotBeTarget()))
-                .OrderBy(card => card.Attack).FirstOrDefault();
+                .OrderByDescending(card => card.Attack)
+                .FirstOrDefault();
         }
 
         public static ClientCard GetHighestDefenseMonster(this IEnumerable<ClientCard> cards, bool canBeTarget = false)
         {
             return cards
                 .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && !(canBeTarget && card.IsShouldNotBeTarget()))
-                .OrderBy(card => card.Defense).FirstOrDefault();
+                .OrderByDescending(card => card.Defense)
+                .FirstOrDefault();
         }
 
         public static ClientCard GetLowestAttackMonster(this IEnumerable<ClientCard> cards, bool canBeTarget = false)
         {
             return cards
                 .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && !(canBeTarget && card.IsShouldNotBeTarget()))
-                .OrderByDescending(card => card.Attack).FirstOrDefault();
+                .OrderBy(card => card.Attack)
+                .FirstOrDefault();
         }
 
         public static ClientCard GetLowestDefenseMonster(this IEnumerable<ClientCard> cards, bool canBeTarget = false)
         {
             return cards
                 .Where(card => card?.Data != null && card.HasType(CardType.Monster) && card.IsFaceup() && !(canBeTarget && card.IsShouldNotBeTarget()))
-                .OrderByDescending(card => card.Defense).FirstOrDefault();
+                .OrderBy(card => card.Defense)
+                .FirstOrDefault();
         }
 
         public static bool ContainsMonsterWithLevel(this IEnumerable<ClientCard> cards, int level)

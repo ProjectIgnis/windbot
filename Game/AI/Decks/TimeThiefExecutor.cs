@@ -1,12 +1,10 @@
-using System;
+﻿using YGOSharp.OCGWrapper;
 using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
-using System.Diagnostics;
 using WindBot;
 using WindBot.Game;
 using WindBot.Game.AI;
 using System.Linq;
-using System.Reflection;
 
 namespace WindBot.Game.AI.Decks
 {
@@ -194,6 +192,7 @@ namespace WindBot.Game.AI.Decks
         {
             if (Card.Location == CardLocation.MonsterZone)
             {
+                if (DefaultCheckWhetherCardIsNegated(Card)) return false;
                 AI.SelectCard(Monsters.TimeThiefCronocorder);
                 AI.SelectCard(Monsters.TimeThiefWinder);
                 return true;
@@ -324,7 +323,7 @@ namespace WindBot.Game.AI.Decks
             AI.SelectCard(Monsters.PerformTrickClown);
             return true;
         }
-        
+
         private bool TrickClownEffect()
         {
             if (Bot.LifePoints <= 1000)
@@ -372,6 +371,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool ThunderKingRaiOheff()
         {
+            if (DefaultOnlyHorusSpSummoning()) return false;
             if (Duel.SummoningCards.Count > 0)
             {
                 foreach (ClientCard m in Duel.SummoningCards)
@@ -402,7 +402,6 @@ namespace WindBot.Game.AI.Decks
             AI.SelectOption(1);
             return true;
         }
-
 
 
     }

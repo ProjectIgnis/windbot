@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using WindBot;
 using WindBot.Game;
 using WindBot.Game.AI;
+using System.Linq;
 
 namespace WindBot.Game.AI.Decks
 {
@@ -220,8 +221,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool isAltergeist(ClientCard card)
         {
-            return card.IsCode(CardId.Marionetter, CardId.Hexstia, CardId.Protocol, CardId.Multifaker, CardId.Meluseek,
-                CardId.Kunquery, CardId.Manifestation, CardId.Silquitous);
+            return card != null && card.HasSetcode(0x103);
         }
 
         public int GetSequence(ClientCard card)
@@ -324,23 +324,37 @@ namespace WindBot.Game.AI.Decks
 
         public int SelectSTPlace(ClientCard card=null, bool avoid_Impermanence = false)
         {
-            List<int> list = new List<int> { 0, 1, 2, 3, 4 };
-            int n = list.Count;
-            while (n-- > 1)
+            if (card == null) card = Card;
+            List<int> list = new List<int>();
+            for (int seq = 0; seq < 5; ++seq)
             {
-                int index = Program.Rand.Next(n + 1);
-                int temp = list[index];
-                list[index] = list[n];
-                list[n] = temp;
-            }
-            foreach (int seq in list)
-            {
-                int zone = (int)System.Math.Pow(2, seq);
                 if (Bot.SpellZone[seq] == null)
                 {
                     if (card != null && card.Location == CardLocation.Hand && avoid_Impermanence && Impermanence_list.Contains(seq)) continue;
-                    return zone;
-                };
+                    list.Add(seq);
+                }
+            }
+            int n = list.Count;
+            while (n-- > 1)
+            {
+                int index = Program.Rand.Next(list.Count);
+                int nextIndex = (index + Program.Rand.Next(list.Count - 1)) % list.Count;
+                int tempInt = list[index];
+                list[index] = list[nextIndex];
+                list[nextIndex] = tempInt;
+            }
+            if (avoid_Impermanence && Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()))
+            {
+                foreach (int seq in list)
+                {
+                    ClientCard enemySpell = Enemy.SpellZone[4 - seq];
+                    if (enemySpell != null && enemySpell.IsFacedown()) continue;
+                    return (int)System.Math.Pow(2, seq);
+                }
+            }
+            foreach (int seq in list)
+            {
+                return (int)System.Math.Pow(2, seq);
             }
             return 0;
         }
@@ -376,6 +390,7 @@ namespace WindBot.Game.AI.Decks
         public bool spell_trap_activate(bool isCounter = false, ClientCard target = null)
         {
             if (target == null) target = Card;
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (target.Location != CardLocation.SpellZone && target.Location != CardLocation.Hand) return true;
             if (Enemy.HasInMonstersZone(CardId.NaturalExterio, true) && !Bot.HasInHandOrHasInMonstersZone(CardId.GO_SR) && !isCounter && !Bot.HasInSpellZone(CardId.SolemnStrike)) return false;
             if (target.IsSpell())
@@ -614,11 +629,11 @@ namespace WindBot.Game.AI.Decks
             if (!spell_trap_activate()) return false;
             if (Bot.LifePoints <= 1000)
                 return false;
-            if (Bot.LifePoints - 1000 <= Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 0))
+            if (Bot.LifePoints - 1000 <= Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 1))
             {
                 return true;
             }
-            if (Bot.LifePoints - 1000 > Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 1))
+            if (Bot.LifePoints - 1000 > Enemy.LifePoints && ActivateDescription == Util.GetStringId(_CardId.ChickenGame, 2))
             {
                 return true;
             }
@@ -649,7 +664,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool G_activate()
         {
-            return (Duel.Player == 1);
+            return (Duel.Player == 1) && !DefaultCheckWhetherCardIsNegated(Card);
         }
 
         public bool NaturalExterio_eff()
@@ -806,6 +821,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool Hand_act_eff()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (Card.IsCode(CardId.AB_JS) && Util.GetLastChainCard().HasSetcode(0x11e) && Util.GetLastChainCard().Location == CardLocation.Hand) // Danger! archtype hand effect
                 return false;
             if (Card.IsCode(CardId.GO_SR) && Card.Location == CardLocation.Hand && Bot.HasInMonstersZone(CardId.GO_SR)) return false;
@@ -886,6 +902,7 @@ namespace WindBot.Game.AI.Decks
 
         public bool GR_WC_activate()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             int warrior_count = 0;
             int pendulum_count = 0;
             int link_count = 0;
@@ -1248,7 +1265,7 @@ namespace WindBot.Game.AI.Decks
                     if (linked_card != null && linked_card.IsCode(CardId.Hexstia))
                     {
                         int next_seq = get_Hexstia_linkzone(this_seq);
-                        if (next_seq != -1 && Bot.MonsterZone[next_seq] != null && isAltergeist(Bot.MonsterZone[next_seq].Id)) return false;
+                        if (next_seq != -1 && Bot.MonsterZone[next_seq] != null && isAltergeist(Bot.MonsterZone[next_seq])) return false;
                     }
                 }
                 return true;
@@ -1675,7 +1692,7 @@ namespace WindBot.Game.AI.Decks
                             if (target.IsCode(CardId.Hexstia))
                             {
                                 int next_index = get_Hexstia_linkzone(i);
-                                if (next_index != -1 && Bot.MonsterZone[next_index] != null && Bot.MonsterZone[next_index].IsFaceup() && isAltergeist(Bot.MonsterZone[next_index].Id)) continue;
+                                if (next_index != -1 && Bot.MonsterZone[next_index] != null && Bot.MonsterZone[next_index].IsFaceup() && isAltergeist(Bot.MonsterZone[next_index])) continue;
                             }
                             if (!get_linked_by_Hexstia(i))
                             {
@@ -2654,6 +2671,28 @@ namespace WindBot.Game.AI.Decks
             ss_other_monster = false;
             Impermanence_list.Clear();
             attacked_Meluseek.Clear();
+            base.OnNewTurn();
+        }
+
+        public override void OnChaining(int player, ClientCard card)
+        {
+            if (card == null) return;
+
+            if (player == 1)
+            {
+                if (card.IsCode(_CardId.InfiniteImpermanence))
+                {
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        if (Enemy.SpellZone[i] == card)
+                        {
+                            Impermanence_list.Add(4-i);
+                            break;
+                        }
+                    }
+                }
+            }
+            base.OnChaining(player, card);
         }
 
         public bool MonsterRepos()
@@ -2797,7 +2836,8 @@ namespace WindBot.Game.AI.Decks
                 // throw all??
                 return null;
             }
-            return null;
+            
+            return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
 
         public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
@@ -2853,16 +2893,16 @@ namespace WindBot.Game.AI.Decks
                         if (cardId == CardId.Hexstia)
                         {
                             // ex zone
-                            if ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && isAltergeist(Bot.MonsterZone[1].Id)) return Zones.z5;
-                            if ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && isAltergeist(Bot.MonsterZone[3].Id)) return Zones.z6;
-                            if ( ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && !isAltergeist(Bot.MonsterZone[3].Id))
+                            if ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && isAltergeist(Bot.MonsterZone[1])) return Zones.z5;
+                            if ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && isAltergeist(Bot.MonsterZone[3])) return Zones.z6;
+                            if ( ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] != null && !isAltergeist(Bot.MonsterZone[3]))
                                 || ((Zones.z5 & available) > 0 && Bot.MonsterZone[1] == null) ) return Zones.z5;
-                            if (((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && !isAltergeist(Bot.MonsterZone[1].Id))
+                            if (((Zones.z5 & available) > 0 && Bot.MonsterZone[1] != null && !isAltergeist(Bot.MonsterZone[1]))
                                 || ((Zones.z6 & available) > 0 && Bot.MonsterZone[3] == null)) return Zones.z6;
                             // main zone
                             for (int i = 1; i < 5; ++i)
                             {
-                                if (Bot.MonsterZone[i] != null && isAltergeist(Bot.MonsterZone[i].Id))
+                                if (Bot.MonsterZone[i] != null && isAltergeist(Bot.MonsterZone[i]))
                                 {
                                     if ((available & (int)System.Math.Pow(2, i - 1)) > 0) return (int)System.Math.Pow(2, i - 1);
                                 }
@@ -2875,6 +2915,16 @@ namespace WindBot.Game.AI.Decks
                 }
             }
             return base.OnSelectPlace(cardId, player, location, available);
+        }
+
+        protected override bool DefaultSetForDiabellze()
+        {
+            if (base.DefaultSetForDiabellze())
+            {
+                AI.SelectPlace(SelectSTPlace(Card, true));
+                return true;
+            }
+            return false;
         }
     }
 }

@@ -7,25 +7,32 @@ This is a simple, deterministic artificial intelligence that connects as a
 virtual player to the YGOPro room system. Decks for this bot player **must** be
 specifically prepared and compiled as individual executors.
 
-Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
+Written in C# 7 targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 
 ## Available decks and executors
 * ABC
+* Apophis
 * Altergeist
+* Branded
 * Blue-Eyes
 * Blue-Eyes Ritual
 * Burn
 * Chain Burn
 * Cyberse
 * Dark Magician
+* Dogmatika
 * Dragma
 * Dragunity
 * Dragun of Red-Eyes
+* Exosister
 * Frog
 * Gren Maju Stun
 * Horus
 * Kashtira
 * Lightsworn Shaddoll Dino
+* Labrynth
+* Maliss
+* Maliss OCG
 * Mathmech
 * Normal Monster Mash
 * Normal Monster Mash II
@@ -34,8 +41,10 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 * R5NK
 * Rainbow
 * Rose Scrap Synchro
+* Ryzeal
 * Salamangreat
 * Sky Striker
+* Superheavy Samurai
 * Thunder Dragon
 * Tearlaments
 * Time Thief
@@ -44,6 +53,8 @@ Written in C# targeting .NET Framework 4. Use Visual Studio 2015 or newer.
 * Windwitch Gusto
 * Witchcrafter Grass
 * Yosenju
+* Yubel
+* Zefra
 * ZEXAL Weapon
 * Zoodiac
 

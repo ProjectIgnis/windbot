@@ -15,7 +15,7 @@
     <RootNamespace>WindBot</RootNamespace>
     <AssemblyName>WindBot</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <LangVersion>6</LangVersion>
+    <LangVersion>7</LangVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -58,6 +58,17 @@
     <Compile Include="Config.cs" />
     <Compile Include="Game\AI\Deck.cs" />
     <Compile Include="Game\AI\Decks\KashtiraExecutor.cs" />
+    <Compile Include="Game\AI\Decks\AlbazExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ApophisExecutor.cs" />
+    <Compile Include="Game\AI\Decks\RyzealExecutor.cs" />
+    <Compile Include="Game\AI\Decks\MalissExecutor.cs" />
+    <Compile Include="Game\AI\Decks\MalissOCGExecutor.cs" />
+    <Compile Include="Game\AI\Decks\DogmatikaExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ExosisterExecutor.cs" />
+    <Compile Include="Game\AI\Decks\LabrynthExecutor.cs" />
+    <Compile Include="Game\AI\Decks\SuperheavySamuraiExecutor.cs" />
+    <Compile Include="Game\AI\Decks\YubelExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ZefraExecutor.cs" />
     <Compile Include="Game\AI\Decks\TearlamentsExecutor.cs" />
     <Compile Include="Game\AI\Decks\ThunderDragonExecutor.cs" />
     <Compile Include="Game\AI\Decks\[HealingJAMExecutor].cs" />

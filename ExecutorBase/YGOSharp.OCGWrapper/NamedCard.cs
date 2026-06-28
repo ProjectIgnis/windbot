@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 
 namespace YGOSharp.OCGWrapper
 {
@@ -13,7 +13,7 @@ namespace YGOSharp.OCGWrapper
             Description = reader.GetString(11);
         }
 
-        public static new NamedCard Get(int id)
+        public static new NamedCard Get(long id)
         {
             return NamedCardsManager.GetCard(id);
         }

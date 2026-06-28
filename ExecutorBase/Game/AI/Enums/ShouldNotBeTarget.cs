@@ -1,8 +1,8 @@
 ﻿namespace WindBot.Game.AI.Enums
 {
     /// <summary>
-    /// Cards that are can't be selected as target, or immuned to most effect.
-    /// So them shouldn't be tried to be selected as target at most times.
+    /// Cards that can't be selected as target, or immune to most effects.
+    /// So they shouldn't be selected as target most times.
     /// </summary>
     public enum ShouldNotBeTarget
     {
@@ -49,6 +49,16 @@
         Blackwing_FullArmoredWing = 54082269,
         DragunofRedEyes = 37818794,
         RedEyesBDragon = 74677422, // sometimes the name of DragunofRedEyes will be changed to RedEyesBDragon
-        TheArrivalCyberseIgnister = 11738489
+        TheArrivalCyberseIgnister = 11738489,
+        MajespecterPorcupineYamaarashi = 51073802,
+        RaidraptorRisingRebellionFalcon = 71222868,
+        Number97Draglubion = 28400508,
+        SaintAzamina = 85065943,
+        LunalightLigerDancer = 54701958,
+        DarklordEveningstar = 10136446,
+        TheFirstDarklord = 4167084,
+        StormBaneDragonDestorbim = 94641726,
+        PowerPatronVidrium = 70488851,
+        RedHypernovaDragon = 30698243
     }
 }

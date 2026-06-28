@@ -24,6 +24,14 @@
         ZushintheSleepingGiant = 67547370,
         Heart_eartHDragon = 97403510,
         DaigustoSphreeze = 29552709,
+        YubelTheLovingDefenderForever = 47172959,
+        PhantomOfYubel = 80453041,
+        UzuhimeTheManifestedMikanko = 57566760,
+        MaidenInLove = 8445808,
+        MatadorArchfiend = 7622360,
+        RedNovaDragonAssaultMode = 82323997,
+        CrimsonBladeDragon = 3294539
+        
     }
 }
 

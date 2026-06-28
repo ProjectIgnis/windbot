@@ -12,6 +12,12 @@
         "masterRules": [ 4, 5 ]
     },
     {
+        "name": "Apophis",
+        "deck": "Apophis",
+        "difficulty": 3,
+        "masterRules": [ 4, 5 ]
+    },
+    {
         "name": "Blue-Eyes",
         "deck": "Blue-Eyes",
         "difficulty": 2,
@@ -28,6 +34,12 @@
         "deck": "Brave",
         "difficulty": 3,
         "masterRules": [ 4, 5 ]
+    },
+    {
+        "name": "Branded",
+        "deck": "Albaz",
+        "difficulty": 3,
+        "masterRules": [ 3, 5 ]
     },
     {
         "name": "Burn",
@@ -57,7 +69,7 @@
         "name": "Dogmatika",
         "deck": "Dogmatika",
         "difficulty": 3,
-        "masterRules": [ 5 ]
+        "masterRules": [ 4, 5 ]
     },
     {
         "name": "Dragun of Red-Eyes",
@@ -70,6 +82,12 @@
         "deck": "Dragunity",
         "difficulty": 2,
         "masterRules": [ 3, 4, 5 ]
+    },
+    {
+        "name": "Exosister",
+        "deck": "Exosister",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
     },
     {
         "name": "Familiar Possessed",
@@ -102,8 +120,20 @@
         "masterRules": [ 3, 4, 5 ]
     },
     {
+        "name": "Invoked Dogmatika",
+        "deck": "Dragma",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
         "name": "Kashtira",
         "deck": "Kashtira",
+        "difficulty": 3,
+        "masterRules": [ 4, 5 ]
+    },
+    {
+        "name": "Labrynth",
+        "deck": "Labrynth",
         "difficulty": 3,
         "masterRules": [ 4, 5 ]
     },
@@ -112,6 +142,18 @@
         "deck": "LightswornShaddoldinosour",
         "difficulty": 3,
         "masterRules": [ 3, 4, 5 ]
+    },
+    {
+        "name": "Maliss",
+        "deck": "Maliss",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
+        "name": "Maliss OCG",
+        "deck": "MalissOCG",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
     },
     {
         "name": "Mathmech",
@@ -168,6 +210,12 @@
         "masterRules": [ 3, 4, 5 ]
     },
     {
+        "name": "Ryzeal",
+        "deck": "Ryzeal",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
         "name": "Salamangreat",
         "deck": "Salamangreat",
         "difficulty": 3,
@@ -176,6 +224,12 @@
     {
         "name": "Sky Striker",
         "deck": "SkyStriker",
+        "difficulty": 3,
+        "masterRules": [ 4, 5 ]
+    },
+    {
+        "name": "Superheavy Samurai",
+        "deck": "SuperheavySamurai",
         "difficulty": 3,
         "masterRules": [ 4, 5 ]
     },
@@ -232,6 +286,18 @@
         "deck": "Yosenju",
         "difficulty": 0,
         "masterRules": [ 3, 4, 5 ]
+    },
+    {
+        "name": "Yubel",
+        "deck": "Yubel",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
+    },
+    {
+        "name": "Zefra",
+        "deck": "Zefra",
+        "difficulty": 3,
+        "masterRules": [ 5 ]
     },
     {
         "name": "ZEXAL Weapon",

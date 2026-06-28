@@ -56,6 +56,13 @@ namespace WindBot.Game.AI
         DisableZone = 570,
         ToZone = 571,
         Counter = 572,
-        Negate = 575;
+        Disable = 573,
+        OperateCard = 574,
+        Negate = 575,
+        RITUAL = 1057,
+        FUSION = 1056,
+        SYNCHRO = 1063,
+        XYZ = 1073,
+        PENDULUM = 1074;
     }
 }

@@ -47,10 +47,21 @@
   <ItemGroup>
     <Compile Include="Game\AI\Deck.cs" />
     <Compile Include="Game\AI\Decks\ABCExecutor.cs" />
+    <Compile Include="Game\AI\Decks\AlbazExecutor.cs" />
     <Compile Include="Game\AI\Decks\AltergeistExecutor.cs" />
     <Compile Include="Game\AI\Decks\FamiliarPossessedExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlackwingExecutor.cs" />
     <Compile Include="Game\AI\Decks\KashtiraExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ApophisExecutor.cs" />
+    <Compile Include="Game\AI\Decks\RyzealExecutor.cs" />
+    <Compile Include="Game\AI\Decks\MalissExecutor.cs" />
+    <Compile Include="Game\AI\Decks\MalissOCGExecutor.cs" />
+    <Compile Include="Game\AI\Decks\DogmatikaExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ExosisterExecutor.cs" />
+    <Compile Include="Game\AI\Decks\LabrynthExecutor.cs" />
+    <Compile Include="Game\AI\Decks\SuperheavySamuraiExecutor.cs" />
+    <Compile Include="Game\AI\Decks\YubelExecutor.cs" />
+    <Compile Include="Game\AI\Decks\ZefraExecutor.cs" />
     <Compile Include="Game\AI\Decks\LuckyExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlueEyesExecutor.cs" />
     <Compile Include="Game\AI\Decks\BlueEyesMaxDragonExecutor.cs" />
@@ -60,8 +71,8 @@
     <Compile Include="Game\AI\Decks\CyberDragonExecutor.cs" />
     <Compile Include="Game\AI\Decks\DoEveryThingExecutor.cs" />
     <Compile Include="Game\AI\Decks\DarkMagicianExecutor.cs" />
-    <Compile Include="Game\AI\Decks\DragmaExecutor.cs" />
     <Compile Include="Game\AI\Decks\DragunExecutor.cs" />
+    <Compile Include="Game\AI\Decks\DragmaExecutor.cs" />
     <Compile Include="Game\AI\Decks\DragunityExecutor.cs" />
     <Compile Include="Game\AI\Decks\EvilswarmExecutor.cs" />
     <Compile Include="Game\AI\Decks\FrogExecutor.cs" />

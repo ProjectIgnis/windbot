@@ -1,5 +1,8 @@
 ﻿namespace WindBot.Game.AI.Enums
 {
+    /// <summary>
+    /// Monsters that can be used as the sole material for an XYZ summon
+    /// </summary>
     public enum OneForXyz
     {
         ZoodiacThoroughblade = 77150143,
@@ -18,6 +21,12 @@
         GalaxyEyesCipherDragon = 18963306,
         Number107 = 88177324,
         CyberDragonNova = 58069384,
-        Number39 = 84013237
+        Number39 = 84013237,
+        Argostars_GloriousAdra = 91438674,
+        Argostars_LightningTydeu = 65889305,
+        Argostars_SwiftCapane = 91284003,
+        Argostars_SlayerEteo = 38379052,
+        Argostars_FierceParthe = 21050476
+        //HeavyKnightBabelDecker = 45116390        //Unsure if this should be included as its conditional
     }
 }

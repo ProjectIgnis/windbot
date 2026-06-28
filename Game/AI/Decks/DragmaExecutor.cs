@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace WindBot.Game.AI.Decks
 {
-    [Deck("Dogmatika", "AI_Dogmatika")]
+    [Deck("Dragma", "AI_Dragma")]
     class DragmaExecutor : DefaultExecutor
     {
         public class CardId

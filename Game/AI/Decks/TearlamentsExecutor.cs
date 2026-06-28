@@ -2,7 +2,10 @@ using YGOSharp.OCGWrapper;
 using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
 using System.Linq;
-
+using WindBot;
+using WindBot.Game;
+using WindBot.Game.AI;
+using System;
 namespace WindBot.Game.AI.Decks
 {
     [Deck("Tearlaments", "AI_Tearlaments")]
@@ -179,8 +182,8 @@ namespace WindBot.Game.AI.Decks
             AddExecutor(ExecutorType.Activate, CardId.BaronnedeFleur, BaronnedeFleurEffect);
             AddExecutor(ExecutorType.Activate, CardId.ElderEntityNtss, ElderEntityNtssEffect);
             AddExecutor(ExecutorType.Activate, CardId.PredaplantDragostapelia, PredaplantDragostapeliaEffect);
-            AddExecutor(ExecutorType.Activate, CardId.HeraldofOrangeLight);
-            AddExecutor(ExecutorType.Activate, CardId.HeraldofGreenLight);
+            AddExecutor(ExecutorType.Activate, CardId.HeraldofOrangeLight, DefaultTrap);
+            AddExecutor(ExecutorType.Activate, CardId.HeraldofGreenLight, DefaultTrap);
             AddExecutor(ExecutorType.Activate, CardId.TearlamentsRulkallos, TearlamentsRulkallosEffect);
             AddExecutor(ExecutorType.Activate, CardId.FADawnDragster);
             AddExecutor(ExecutorType.Activate, CardId.PrimevalPlanetPerlereino, PrimevalPlanetPerlereinoEffect);
@@ -272,6 +275,7 @@ namespace WindBot.Game.AI.Decks
             spsummoned = false;
             summon_SprightElf = false;
             TearlamentsKitkallos_summoned = false;
+            base.OnNewTurn();
         }
         private List<ClientCard> GetZoneCards(CardLocation loc, ClientField player)
         {
@@ -1699,7 +1703,7 @@ namespace WindBot.Game.AI.Decks
             if (Duel.Turn == 1 || Enemy.GetMonsterCount() <= 0) return false;
             List<ClientCard> e_cards = Enemy.GetMonsters().Where(card => card != null && card.IsFaceup() && card.IsAttack()).ToList();
             List<ClientCard> b_cards = Bot.GetMonsters().Where(card => card != null && card.IsFaceup() && card.IsAttack()).ToList();
-            if ((e_cards.Count <= 0 || b_cards.Count <= 0) && Enemy.MonsterZone.GetDangerousMonster() == null) return false;
+            if (e_cards.Count <= 0 || b_cards.Count <= 0 || Enemy.MonsterZone.GetDangerousMonster() == null) return false;
             e_cards.Sort(CardContainer.CompareCardAttack);
             e_cards.Reverse();
             b_cards.Sort(CardContainer.CompareCardAttack);
@@ -2167,6 +2171,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool EvaEffect()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             List<ClientCard> cards = Bot.GetGraveyardMonsters().Where(card => card != null && card.HasAttribute(CardAttribute.Light) && card.HasRace(CardRace.Fairy) && card != Card).ToList();
             if (cards.Count <= 0) return false;
             activate_Eva = true;
@@ -2202,6 +2207,7 @@ namespace WindBot.Game.AI.Decks
         }
         private bool MudoratheSwordOracleEffect()
         {
+            if (DefaultCheckWhetherCardIsNegated(Card)) return false;
             if (Card.Location == CardLocation.Hand)
             {
                 if ((Bot.Hand.Count(card => card != null && card.Id == CardId.AgidotheAncientSentinel) <= 0 || activate_AgidotheAncientSentinel_2)
