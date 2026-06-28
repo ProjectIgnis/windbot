@@ -70,7 +70,8 @@ jobs:
     - name: Upload Build artifact
       uses: actions/upload-artifact@v7
       with:
-        path: assets
+        name: Android
+        path: assets/*
 
   Android:
     runs-on: windows-2025-vs2026
@@ -125,7 +126,8 @@ jobs:
     - name: Upload Build artifact
       uses: actions/upload-artifact@v7
       with:
-        path: assets
+        name: Android
+        path: assets/*
 
 
 # assets to upload android
