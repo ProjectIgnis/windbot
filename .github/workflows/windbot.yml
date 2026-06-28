@@ -93,13 +93,6 @@ jobs:
         ./ci/install-net-4.0.sh
     - name: Add msbuild to PATH
       uses: microsoft/setup-msbuild@v3
-# Unspecified dependency for Embeddinator; 64-bit does not work
-    - name: Install mono and SDK 24, SDK 25 and NDK 15
-      shell: bash
-      env:
-        VS_PREFIX: "18.0_"
-      run: |
-        choco install mono --x86 --ignore-checksums & ./ci/install-sdk-ndk.sh & wait
     - name: Install Xamarin
       shell: pwsh
       run: |
@@ -120,6 +113,13 @@ jobs:
             Write-Host "components were not installed"
             exit 1
         }
+# Unspecified dependency for Embeddinator; 64-bit does not work
+    - name: Install mono and SDK 24, SDK 25 and NDK 15
+      shell: bash
+      env:
+        VS_PREFIX: "18.0_"
+      run: |
+        choco install mono --x86 --ignore-checksums & ./ci/install-sdk-ndk.sh & wait
     - name: Build
       shell: bash
       run: |
