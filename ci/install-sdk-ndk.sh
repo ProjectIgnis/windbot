@@ -28,6 +28,10 @@ set -euxo pipefail
 curl -L https://github.com/ProjectIgnis/windbot/releases/download/20260628/Xamarin.zip -o Xamarin.zip
 unzip Xamarin.zip -d "C:\Program Files (x86)\MSBuild"
 
+mkdir -p "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid"
+curl -L https://github.com/ProjectIgnis/windbot/releases/download/20260628/MonoAndroid.zip -o MonoAndroid.zip
+unzip MonoAndroid.zip -d "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid"
+
 KEY=$(echo $(reg query 'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.vssettings\OpenWithProgids') | cut -d ' ' -f 3)
 INSTALLATION_ID="$VS_PREFIX${KEY##*.}"
 
