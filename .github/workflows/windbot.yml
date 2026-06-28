@@ -78,6 +78,7 @@ jobs:
     - name: Set ARTIFACT env var
       shell: bash
       run: |
+        cat "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Xamarin\Android\Xamarin.Android.Tools.Versions.props"
         echo "ARTIFACT=WindBotIgnite-Release-$(date +%Y%m%d)-${{ github.sha }}.zip" >> $GITHUB_ENV
     - uses: actions/checkout@v1
       with:
