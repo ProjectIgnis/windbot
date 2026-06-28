@@ -75,12 +75,16 @@ jobs:
     env:
       TRAVIS_OS_NAME: android
     steps:
+    - name: Set ARTIFACT env var
+      shell: bash
+      run: |
+        ls "C:\Program Files\Microsoft Visual Studio\2022"
+        cp -r "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Xamarin" assets
     - name: Upload Build artifact
       uses: actions/upload-artifact@v7
       with:
         name: Desktop
-        path: |
-          "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Xamarin"
+        path: assets
     - uses: actions/checkout@v1
 
 
