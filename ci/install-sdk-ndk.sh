@@ -32,7 +32,7 @@ mkdir -p "C:\Program Files\Microsoft Visual Studio\18\Enterprise\Common7\IDE\Ref
 mkdir -p "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid"
 curl -L https://github.com/ProjectIgnis/windbot/releases/download/20260628/MonoAndroid.zip -o MonoAndroid.zip
 rm -rf "C:\Program Files\Microsoft Visual Studio\18\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid\v1.0"
-unzip MonoAndroid.zip -d "C:\Program Files\Microsoft Visual Studio\2026\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid"
+unzip MonoAndroid.zip -d "C:\Program Files\Microsoft Visual Studio\18\Enterprise\Common7\IDE\ReferenceAssemblies\Microsoft\Framework\MonoAndroid"
 
 rm -rf "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid\v1.0"
 unzip MonoAndroid.zip -d "C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\MonoAndroid"
