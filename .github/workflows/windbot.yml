@@ -24,6 +24,7 @@ jobs:
   Desktop:
     runs-on: windows-2022
     needs: create_release
+    if: false
     env:
       TRAVIS_OS_NAME: windows
     steps:
@@ -100,7 +101,7 @@ jobs:
       run: |
         msbuild.exe -t:restore WindBot.sln
         ./ci/install-patched-mono-runtime.sh
-        msbuild.exe -m -p:Configuration=Release WindBot.sln
+        msbuild.exe -m -p:Configuration=Release WindBot.sln -v:diag
     - name: Predeploy
       shell: bash
       run: |
