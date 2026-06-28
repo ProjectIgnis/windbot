@@ -75,52 +75,12 @@ jobs:
     env:
       TRAVIS_OS_NAME: android
     steps:
-    - name: Set ARTIFACT env var
-      shell: bash
-      run: |
-        ls "C:\Program Files\Microsoft Visual Studio\2022"
-        cat "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Xamarin\Android\Xamarin.Android.Tools.Versions.props"
-        echo "ARTIFACT=WindBotIgnite-Release-$(date +%Y%m%d)-${{ github.sha }}.zip" >> $GITHUB_ENV
+    - name: Upload Build artifact
+      uses: actions/upload-artifact@v7
+      with:
+        name: Desktop
+        path: C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Xamarin"
     - uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
-        submodules: true
-    - name: Install .NET 4.0
-      shell: bash
-      run: |
-        ./ci/install-net-4.0.sh
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
-# Unspecified dependency for Embeddinator; 64-bit does not work
-    - name: Install mono and SDK 24, SDK 25 and NDK 15
-      shell: bash
-      env:
-        VS_PREFIX: "17.0_"
-      run: |
-        choco install mono --x86 --ignore-checksums & ./ci/install-sdk-ndk.sh & wait
-    - name: Build
-      shell: bash
-      run: |
-        msbuild.exe -t:restore WindBot.sln
-        ./ci/install-patched-mono-runtime.sh
-        msbuild.exe -m -p:Configuration=Release WindBot.sln -v:diag
-    - name: Predeploy
-      shell: bash
-      run: |
-        cd bin && mkdir -p WindBot
-        cp -r Release/COPYING Release/LICENSE Release/bots.json Release/Decks/ Release/Dialogs/ WindBot/
-        7z a WindBotIgnite-Resources.7z WindBot && cd ..
-        mkdir -p assets
-        mv output/libWindbot.aar bin/WindBotIgnite-Resources.7z assets
-    - name: Upload Release Assets
-      if: startsWith(github.ref, 'refs/tags/')
-      id: upload-release-assets
-      uses: dwenegar/upload-release-assets@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        release_id: ${{ needs.create_release.outputs.output }}
-        assets_path: assets
 
 
 # assets to upload android
