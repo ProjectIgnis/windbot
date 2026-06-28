@@ -45,7 +45,7 @@ reg add 'HKCU\SOFTWARE\Xamarin\VisualStudio\'$INSTALLATION_ID'\Android' -v Andro
 # Sometimes installed by Microsoft in C:\ProgramData\Microsoft\AndroidNDK64 but not present on CI
 reg add 'HKCU\SOFTWARE\Xamarin\VisualStudio\'$INSTALLATION_ID'\Android' -v AndroidNdkDirectory -t REG_SZ -d "C:\android-ndk-r15c" -f
 # Visual Studio Installer provides this JDK for Android development
-reg add 'HKCU\SOFTWARE\Xamarin\VisualStudio\'$INSTALLATION_ID'\Android' -v JavaSdkDirectory -t REG_SZ -d "$JAVA_HOME" -f
+reg add 'HKCU\SOFTWARE\Xamarin\VisualStudio\'$INSTALLATION_ID'\Android' -v JavaSdkDirectory -t REG_SZ -d "$JAVA_HOME_11_X64" -f
 
 # Manually install Android SDK Platform 24, the most recent version that still works with Embeddinator 0.4.0
 # Manually install Android SDK Platform 25, version needed by Xamarin
