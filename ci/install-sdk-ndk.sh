@@ -25,7 +25,7 @@ set -euxo pipefail
 # the runner has to set the "VS_PREFIX" environment variable (like "16.0_")
 # to be able to generate the full installation id
 
-wget https://github.com/ProjectIgnis/windbot/releases/download/20260628/Xamarin.zip
+curl -L https://github.com/ProjectIgnis/windbot/releases/download/20260628/Xamarin.zip -o Xamarin.zip
 unzip Xamarin.zip -d "C:\Program Files (x86)\MSBuild"
 
 KEY=$(echo $(reg query 'HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.vssettings\OpenWithProgids') | cut -d ' ' -f 3)
