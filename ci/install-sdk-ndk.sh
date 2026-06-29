@@ -26,7 +26,7 @@ set -euxo pipefail
 # to be able to generate the full installation id
 
 curl -L https://github.com/ProjectIgnis/windbot/releases/download/20260628/Xamarin.zip -o Xamarin.zip
-# unzip Xamarin.zip -d "C:\Program Files (x86)\MSBuild"
+unzip Xamarin.zip -d "C:\Program Files (x86)\MSBuild"
 
 mkdir -p "C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Xamarin\Android\Xamarin"
 rm -r "C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Xamarin\Android\Xamarin"
