@@ -33,7 +33,15 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - uses: codebeltnet/install-mono@v1
+    - uses: Install mono
+      shell: bash
+      run: |
+        sudo apt install ca-certificates gnupg
+        sudo gpg --homedir /tmp --no-default-keyring --keyring /usr/share/keyrings/mono-official-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+        sudo chmod +r /usr/share/keyrings/mono-official-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+        sudo apt update
+        sudo apt install mono-devel
     - name: Build
       shell: bash
       run: |
@@ -75,7 +83,15 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - uses: codebeltnet/install-mono@v1
+    - uses: Install mono
+      shell: bash
+      run: |
+        sudo apt install ca-certificates gnupg
+        sudo gpg --homedir /tmp --no-default-keyring --keyring /usr/share/keyrings/mono-official-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+        sudo chmod +r /usr/share/keyrings/mono-official-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/mono-official-archive-keyring.gpg] https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+        sudo apt update
+        sudo apt install mono-devel
     - name: Install mono xamarin
       run: |
         curl -L https://github.com/ProjectIgnis/windbot/releases/download/xamarin-assets/xamarin.android-oss_12.2.99.0_amd64.deb -o xamarin.android-oss_12.2.99.0_amd64.deb
