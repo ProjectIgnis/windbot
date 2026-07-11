@@ -31,7 +31,7 @@ jobs:
     - name: Set ARTIFACT env var
       shell: bash
       run: |
-        echo "ARTIFACT=WindBotIgnite-Release-$(date +%Y%m%d)-${{ github.sha }}.zip" >> $GITHUB_ENV
+        echo "DESKTOP_ARTIFACT=WindBotIgnite-Release-$(date +%Y%m%d)-${{ github.sha }}.zip" >> $GITHUB_ENV
     - uses: actions/checkout@v1
       with:
         fetch-depth: 1
@@ -41,38 +41,31 @@ jobs:
       run: |
         curl -L https://github.com/ProjectIgnis/windbot/releases/download/xamarin-assets/xamarin.android-oss_12.2.99.0_amd64.deb -o xamarin.android-oss_12.2.99.0_amd64.deb
         sudo apt update && sudo apt install -y ./xamarin.android-oss_12.2.99.0_amd64.deb
-    - name: Install mono and SDK 24, SDK 25 and NDK 15
+    - name: Install SDK 24, SDK 25 and NDK 15
       shell: bash
       run: |
         ./ci/install-sdk-ndk.sh
-    - name: Build Desktop
+    - name: Build
       shell: bash
       run: |
         msbuild -t:restore WindBot.sln
         ./ci/install-patched-mono-runtime.sh
-        msbuild -m -p:Configuration=Release WindBot.sln -p:Posix=true -t:Windbot
-    - name: Predeploy Desktop
+        msbuild -m -p:Configuration=Release WindBot.sln -p:Posix=true
+    - name: Predeploy
       shell: bash
       run: |
         mkdir staging
         cd bin && mv Release WindBot
-        7z a -tzip "$ARTIFACT" WindBot
+        rm WindBot/mscorlib* WindBot/libWindbot*
+        7z a -tzip "$DESKTOP_ARTIFACT" WindBot
         mv WindBot ../staging/
-        mv $ARTIFACT .. && cd ..
-        mkdir -p assets
-        cp $ARTIFACT assets
-    - name: Build Android
-      shell: bash
-      run: |
-        msbuild -m -p:Configuration=Release WindBot.sln -p:Posix=true -t:libWindbot
-    - name: Predeploy
-      shell: bash
-      run: |
-        cd bin && mkdir -p WindBot
+        mv $DESKTOP_ARTIFACT ..
+        mkdir -p WindBot
         cp -r ../COPYING ../LICENSE ../bots.json ../Decks/ ../Dialogs/ WindBot/
         7z a WindBotIgnite-Resources.7z WindBot && cd ..
+        cd ..
         mkdir -p assets
-        mv output/libWindbot.aar bin/WindBotIgnite-Resources.7z assets
+        mv output/libWindbot.aar bin/WindBotIgnite-Resources.7z $DESKTOP_ARTIFACT assets
         cp assets/libWindbot.aar staging/
     - name: Deploy
       if: ${{ github.event_name == 'push' }}
