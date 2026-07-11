@@ -76,6 +76,7 @@ jobs:
     - uses: codebeltnet/install-mono@v1
     - name: Install mono xamarin
       run: |
+        apt install tree
         curl -L https://github.com/ProjectIgnis/windbot/releases/download/xamarin-assets/xamarin.android-oss_12.2.99.0_amd64.deb -o xamarin.android-oss_12.2.99.0_amd64.deb
         sudo apt update && sudo apt install -y ./xamarin.android-oss_12.2.99.0_amd64.deb
     - name: Install mono and SDK 24, SDK 25 and NDK 15
@@ -88,6 +89,7 @@ jobs:
         NuGetPackageRoot: ~/.nuget
       run: |
         msbuild -t:restore -v:diag WindBot.sln
+        tree .
         # ./ci/install-patched-mono-runtime.sh
         msbuild -m -p:Configuration=Release -t:libWindbot WindBot.sln -p:Posix=true
     - name: Predeploy
