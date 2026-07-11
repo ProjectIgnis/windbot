@@ -85,9 +85,13 @@
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>set E4K_OUTPUT="$(SolutionDir)output"
+    <Posix>false</Posix>
+    <PostBuildEvent Condition="'$(Posix)' == 'false'">set E4K_OUTPUT="$(SolutionDir)output"
 if exist %25E4K_OUTPUT%25 rmdir /S /Q %25E4K_OUTPUT%25
 "$(NuGetPackageRoot)embeddinator-4000\0.4.0\tools\Embeddinator-4000.exe" "$(TargetPath)" --gen=Java --platform=Android --outdir=%25E4K_OUTPUT%25 -c -v
+</PostBuildEvent>
+    <PostBuildEvent Condition="'$(Posix)' == 'true'">rm -rf $(SolutionDir)output
+"mono" "$(NuGetPackageRoot)\embeddinator-4000\0.4.0\tools\Embeddinator-4000.exe" "$(TargetPath)" --gen=Java --platform=Android --outdir=$(SolutionDir)output -c -v
 </PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
