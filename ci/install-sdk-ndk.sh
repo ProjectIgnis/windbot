@@ -15,7 +15,6 @@ curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-nam
 echo "0bf02d4e8b85fd770fd7b9b2cdec57f9441f27a2 *android-ndk-r15c-linux-x86_64.zip" | sha1sum -c
 mkdir -p "$ANDROID_SDK_ROOT/ndk"
 unzip android-ndk-r15c-linux-x86_64.zip -d "$ANDROID_SDK_ROOT/ndk"
-tree $ANDROID_SDK_ROOT
 
 mkdir -p ~/.config/xbuild
 cat <<EOF > ~/.config/xbuild/monodroid-config.xml
