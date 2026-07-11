@@ -1399,10 +1399,7 @@ namespace WindBot.Game
             packet.ReadByte(); // player
 
             int cardId = packet.ReadInt32();
-            int player = GetLocalPlayer(packet.ReadByte());
-            CardLocation loc = (CardLocation)packet.ReadByte();
-            int seq = packet.ReadByte();
-            packet.ReadByte();
+            LocationInfo info = new LocationInfo(packet, _duel.IsFirst);
             long desc = packet.ReadInt64();
 
             if (desc == 0 || desc == 221)
@@ -1413,7 +1410,7 @@ namespace WindBot.Game
                 desc = -1;
             }
 
-            ClientCard card = _duel.GetCard(player, loc, seq);
+            ClientCard card = _duel.GetCard(info.controler, info.location, info.sequence, info.position);
             if (card == null)
             {
                 Connection.Send(CtosMessage.Response, 0);
