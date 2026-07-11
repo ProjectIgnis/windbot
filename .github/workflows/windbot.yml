@@ -63,7 +63,6 @@ jobs:
         mkdir -p WindBot
         cp -r ../COPYING ../LICENSE ../bots.json ../Decks/ ../Dialogs/ WindBot/
         7z a WindBotIgnite-Resources.7z WindBot && cd ..
-        cd ..
         mkdir -p assets
         mv output/libWindbot.aar bin/WindBotIgnite-Resources.7z $DESKTOP_ARTIFACT assets
         cp assets/libWindbot.aar staging/
