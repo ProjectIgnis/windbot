@@ -10,7 +10,7 @@ set -euxo pipefail
 # and ultimately obtained by reading out the Visual Studio installation id, which seems to be unique
 # https://github.com/xamarin/xamarin-android/blob/a677c1794db64d5559f53a960927447bac3063a2/src/Xamarin.Android.Build.Tasks/MSBuild/Xamarin/Xamarin.Android.Sdk.props#L16
 
-
+mkdir -p ~/.config/xbuild
 cat <<EOF > ~/.config/xbuild/monodroid-config.xml
 <?xml version="1.0" encoding="utf-8"?>
 <monodroid>
