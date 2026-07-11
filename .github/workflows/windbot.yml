@@ -78,6 +78,7 @@ jobs:
     - uses: codebeltnet/install-mono@v1
     - name: Install mono xamarin
       run: |
+        sudo apt install tree
         curl -L https://github.com/ProjectIgnis/windbot/releases/download/xamarin-assets/xamarin.android-oss_12.2.99.0_amd64.deb -o xamarin.android-oss_12.2.99.0_amd64.deb
         sudo apt update && sudo apt install -y ./xamarin.android-oss_12.2.99.0_amd64.deb
     - name: Install mono and SDK 24, SDK 25 and NDK 15

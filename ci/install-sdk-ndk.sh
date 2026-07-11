@@ -10,6 +10,13 @@ set -euxo pipefail
 # and ultimately obtained by reading out the Visual Studio installation id, which seems to be unique
 # https://github.com/xamarin/xamarin-android/blob/a677c1794db64d5559f53a960927447bac3063a2/src/Xamarin.Android.Build.Tasks/MSBuild/Xamarin/Xamarin.Android.Sdk.props#L16
 
+# Manually install Android NDK r15c, the most recent version that still works with Embeddinator 0.4.0
+curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip
+echo "0bf02d4e8b85fd770fd7b9b2cdec57f9441f27a2 *android-ndk-r15c-linux-x86_64.zip" | sha1sum -c
+mkdir -p '$ANDROID_SDK_ROOT/ndk'
+unzip android-ndk-r15c-linux-x86_64.zip -d '$ANDROID_SDK_ROOT/ndk'
+tree $ANDROID_SDK_ROOT
+
 mkdir -p ~/.config/xbuild
 cat <<EOF > ~/.config/xbuild/monodroid-config.xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -20,12 +27,9 @@ cat <<EOF > ~/.config/xbuild/monodroid-config.xml
 </monodroid>
 EOF
 
+cat ~/.config/xbuild
+
 # Manually install Android SDK Platform 24, the most recent version that still works with Embeddinator 0.4.0
 # Manually install Android SDK Platform 25, version needed by Xamarin
 (yes || true) | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "build-tools;30.0.3" "platforms;android-24" "platforms;android-25" "cmdline-tools;5.0"
 
-# Manually install Android NDK r15c, the most recent version that still works with Embeddinator 0.4.0
-curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip
-echo "0bf02d4e8b85fd770fd7b9b2cdec57f9441f27a2 *android-ndk-r15c-linux-x86_64.zip" | sha1sum -c
-mkdir -p '$ANDROID_SDK_ROOT/ndk'
-unzip android-ndk-r15c-linux-x86_64.zip -d '$ANDROID_SDK_ROOT/ndk'
