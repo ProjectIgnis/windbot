@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-cd bin
+cd staging
 git init
 git checkout --orphan $DEPLOY_BRANCH
 git config user.email github-actions[bot]@users.noreply.github.com
