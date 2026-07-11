@@ -22,7 +22,7 @@ EOF
 
 # Manually install Android SDK Platform 24, the most recent version that still works with Embeddinator 0.4.0
 # Manually install Android SDK Platform 25, version needed by Xamarin
-(yes || true) | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager.bat --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "build-tools;30.0.3" "platforms;android-24" "platforms;android-25" "cmdline-tools:5.0"
+(yes || true) | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "build-tools;30.0.3" "platforms;android-24" "platforms;android-25" "cmdline-tools;5.0"
 
 # Manually install Android NDK r15c, the most recent version that still works with Embeddinator 0.4.0
 curl --retry 5 --connect-timeout 30 --location --remote-header-name --remote-name https://dl.google.com/android/repository/android-ndk-r15c-linux-x86_64.zip
