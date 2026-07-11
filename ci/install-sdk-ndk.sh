@@ -26,8 +26,6 @@ cat <<EOF > ~/.config/xbuild/monodroid-config.xml
 </monodroid>
 EOF
 
-cat ~/.config/xbuild
-
 # Manually install Android SDK Platform 24, the most recent version that still works with Embeddinator 0.4.0
 # Manually install Android SDK Platform 25, version needed by Xamarin
 (yes || true) | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "build-tools;30.0.3" "platforms;android-24" "platforms;android-25" "cmdline-tools;5.0"
