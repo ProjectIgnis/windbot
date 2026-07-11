@@ -63,7 +63,7 @@ jobs:
         assets_path: assets
 
   Android:
-    runs-on: windows-2022
+    runs-on: ubuntu-22.04
     needs: create_release
     steps:
     - name: Set ARTIFACT env var
@@ -74,25 +74,19 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - name: Install .NET 4.0
-      shell: bash
-      run: |
-        ./ci/install-net-4.0.sh
-    - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v2
-# Unspecified dependency for Embeddinator; 64-bit does not work
+    - name: codebeltnet/install-mono@v1
     - name: Install mono and SDK 24, SDK 25 and NDK 15
       shell: bash
-      env:
-        VS_PREFIX: "17.0_"
       run: |
-        choco install mono --x86 --ignore-checksums & ./ci/install-sdk-ndk.sh & wait
+        ./ci/install-sdk-ndk.sh
     - name: Build
       shell: bash
+      env:
+        NuGetPackageRoot: ~/.nuget
       run: |
-        msbuild.exe -t:restore WindBot.sln
+        msbuild -t:restore WindBot.sln
         ./ci/install-patched-mono-runtime.sh
-        msbuild.exe -m -p:Configuration=Release WindBot.sln
+        msbuild -m -p:Configuration=Release -t:libWindbot WindBot.sln
     - name: Predeploy
       shell: bash
       run: |
