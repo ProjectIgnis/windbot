@@ -33,7 +33,7 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - uses: Install mono
+    - name: Install mono
       shell: bash
       run: |
         sudo apt install ca-certificates gnupg
@@ -83,7 +83,7 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - uses: Install mono
+    - name: Install mono
       shell: bash
       run: |
         sudo apt install ca-certificates gnupg
