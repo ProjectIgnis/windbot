@@ -69,7 +69,7 @@ jobs:
       shell: bash
       run: |
         cd bin && mkdir -p WindBot
-        cp -r Release/COPYING Release/LICENSE Release/bots.json Release/Decks/ Release/Dialogs/ WindBot/
+        cp -r ../COPYING ../LICENSE ../bots.json ../Decks/ ../Dialogs/ WindBot/
         7z a WindBotIgnite-Resources.7z WindBot && cd ..
         mkdir -p assets
         mv output/libWindbot.aar bin/WindBotIgnite-Resources.7z assets
