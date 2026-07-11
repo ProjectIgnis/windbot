@@ -89,7 +89,6 @@ jobs:
         NuGetPackageRoot: ~/.nuget
       run: |
         msbuild -t:restore WindBot.sln
-        ./ci/install-patched-mono-runtime.sh
         msbuild -m -p:Configuration=Release -t:libWindbot WindBot.sln -p:Posix=true
     - name: Predeploy
       shell: bash
