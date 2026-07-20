@@ -9,10 +9,10 @@ namespace YGOSharp.OCGWrapper
         {
             public int Code;
             public int Alias;
-            public long Setcode;
-            public int Type;
+            public ulong Setcode;
+            public uint Type;
             public int Level;
-            public int Attribute;
+            public uint Attribute;
             public ulong Race;
             public int Attack;
             public int Defense;
@@ -24,15 +24,15 @@ namespace YGOSharp.OCGWrapper
         public int Id { get; private set; }
         public int Ot { get; private set; }
         public int Alias { get; private set; }
-        public long Setcode { get; private set; }
-        public int Type { get; private set; }
+        public ulong Setcode { get; private set; }
+        public uint Type { get; private set; }
 
         public int Level { get; private set; }
         public int LScale { get; private set; }
         public int RScale { get; private set; }
         public int LinkMarker { get; private set; }
 
-        public int Attribute { get; private set; }
+        public uint Attribute { get; private set; }
         public ulong Race { get; private set; }
         public int Attack { get; private set; }
         public int Defense { get; private set; }
@@ -46,17 +46,17 @@ namespace YGOSharp.OCGWrapper
 
         public bool HasType(CardType type)
         {
-            return ((Type & (int)type) != 0);
+            return ((Type & (uint)type) != 0);
         }
 
         public bool HasSetcode(int setcode)
         {
-            long setcodes = Setcode;
+            ulong setcodes = Setcode;
             int settype = setcode & 0xfff;
             int setsubtype = setcode & 0xf000;
             while (setcodes > 0)
             {
-                long check_setcode = setcodes & 0xffff;
+                long check_setcode = (long)(setcodes & 0xffff);
                 setcodes >>= 16;
                 if ((check_setcode & 0xfff) == settype && (check_setcode & 0xf000 & setsubtype) == setsubtype) return true;
             }
@@ -73,16 +73,16 @@ namespace YGOSharp.OCGWrapper
             Id = reader.GetInt32(0);
             Ot = reader.GetInt32(1);
             Alias = reader.GetInt32(2);
-            Setcode = reader.GetInt64(3);
-            Type = reader.GetInt32(4);
+            Setcode = (ulong)reader.GetInt64(3);
+            Type = (uint)reader.GetInt64(4);
 
-            int levelInfo = reader.GetInt32(5);
-            Level = levelInfo & 0xff;
-            LScale = (levelInfo >> 24) & 0xff;
-            RScale = (levelInfo >> 16) & 0xff;
+            uint levelInfo = (uint)reader.GetInt64(5);
+            Level = (int)(levelInfo & 0xff);
+            LScale = (int)((levelInfo >> 24) & 0xff);
+            RScale = (int)((levelInfo >> 16) & 0xff);
 
             Race = (ulong)reader.GetInt64(6);
-            Attribute = reader.GetInt32(7);
+            Attribute = (uint)reader.GetInt64(7);
             Attack = reader.GetInt32(8);
             Defense = reader.GetInt32(9);
 
