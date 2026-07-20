@@ -23,9 +23,7 @@ jobs:
         prerelease: false
 
   Build:
-    runs-on: ubuntu-24.04
-    env:
-      NuGetPackageRoot: /home/runner/.nuget/packages
+    runs-on: ubuntu-latest
     needs: create_release
     steps:
     - name: Set ARTIFACT env var
@@ -36,21 +34,16 @@ jobs:
       with:
         fetch-depth: 1
         submodules: true
-    - uses: codebeltnet/install-mono@v1
-    - name: Install mono xamarin
+    - name: Pull mono builder image
       run: |
-        curl -L https://github.com/ProjectIgnis/windbot/releases/download/xamarin-assets/xamarin.android-oss_12.2.99.0_amd64.deb -o xamarin.android-oss_12.2.99.0_amd64.deb
-        sudo apt update && sudo apt install -y ./xamarin.android-oss_12.2.99.0_amd64.deb
-    - name: Install SDK 24, SDK 25 and NDK 15
-      shell: bash
-      run: |
-        ./ci/install-sdk-ndk.sh
+        docker pull ghcr.io/projectignis/mono_xamarin_builder_monodroid:master
+        docker image tag ghcr.io/projectignis/mono_xamarin_builder_monodroid:master monodroid
     - name: Build
       shell: bash
       run: |
-        msbuild -t:restore WindBot.sln
+        docker run --rm --volume $PWD:/project monodroid -t:restore -p:RestorePackagesPath=./.nuget WindBot.sln
         ./ci/install-patched-mono-runtime.sh
-        msbuild -m -p:Configuration=Release WindBot.sln -p:Posix=true
+        docker run --rm --volume $PWD:/project monodroid -m -p:Configuration=Release WindBot.sln -p:Posix=true
     - name: Predeploy
       shell: bash
       run: |
