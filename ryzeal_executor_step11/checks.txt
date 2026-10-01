@@ -1,0 +1,5 @@
+PASS candidate/logging non-activation indices use scalar ActionIndex
+PASS effect dictionary missing-key sentinel remains -1
+PASS C# source markdown fences removed
+PASS standalone evaluator Program class removed
+C# host build and gameplay NOT executed

@@ -75,6 +75,8 @@ namespace WindBot.Game
         /// </summary>
         public void OnStart()
         {
+            var observer = Executor as IMainPhaseDecisionObserver;
+            if (observer != null) observer.ObserveDuelStart();
             _dialogs.SendDuelStart();
         }
 
@@ -474,19 +476,30 @@ namespace WindBot.Game
         /// </summary>
         /// <param name="main">A lot of informations about the available actions.</param>
         /// <returns>A new MainPhaseAction containing the action to do.</returns>
+        private MainPhaseAction ObserveLegacyIdleAction(MainPhaseAction action, string kind, int cardId, long description)
+        {
+            var observer = Executor as IMainPhaseDecisionObserver;
+            if (observer != null) observer.ObserveLegacyMainPhaseAction(kind, cardId, description);
+            return action;
+        }
+
         public MainPhaseAction OnSelectIdleCmd(MainPhase main)
         {
             CheckSurrender();
+            MainPhaseAction candidateAction;
+            if (Executor.TryGetMainPhaseAction(main, out candidateAction))
+                return candidateAction;
+
             foreach (CardExecutor exec in Executor.Executors)
             {
                 if (exec.Type == ExecutorType.GoToEndPhase && main.CanEndPhase && exec.Func()) // check if should enter end phase directly
                 {
                     _dialogs.SendEndTurn();
-                    return new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase);
+                    return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase), "ToEndPhase", 0, -1);
                 }
                 if (exec.Type==ExecutorType.GoToBattlePhase && main.CanBattlePhase && exec.Func()) // check if should enter battle phase directly
                 {
-                    return new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase);
+                    return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase), "ToBattlePhase", 0, -1);
                 }
                 // NOTICE: GoToBattlePhase and GoToEndPhase has no "card" can be accessed to ShouldExecute(), so instead use exec.Func() to check ...
                 // enter end phase and enter battle pahse is in higher priority.
@@ -497,7 +510,7 @@ namespace WindBot.Game
                     if (ShouldExecute(exec, card, ExecutorType.Activate, main.ActivableDescs[i]))
                     {
                         _dialogs.SendActivate(card.Name);
-                        return new MainPhaseAction(MainPhaseAction.MainAction.Activate, card.ActionActivateIndex[main.ActivableDescs[i]]);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.Activate, card.ActionActivateIndex[main.ActivableDescs[i]]), "Activate", card.Id, main.ActivableDescs[i]);
                     }
                 }
                 foreach (ClientCard card in main.MonsterSetableCards)
@@ -505,20 +518,20 @@ namespace WindBot.Game
                     if (ShouldExecute(exec, card, ExecutorType.MonsterSet))
                     {
                         _dialogs.SendSetMonster();
-                        return new MainPhaseAction(MainPhaseAction.MainAction.SetMonster, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.SetMonster, card.ActionIndex), "SetMonster", card.Id, -1);
                     }
                 }
                 foreach (ClientCard card in main.ReposableCards)
                 {
                     if (ShouldExecute(exec, card, ExecutorType.Repos))
-                        return new MainPhaseAction(MainPhaseAction.MainAction.Repos, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.Repos, card.ActionIndex), "Repos", card.Id, -1);
                 }
                 foreach (ClientCard card in main.SpecialSummonableCards)
                 {
                     if (ShouldExecute(exec, card, ExecutorType.SpSummon))
                     {
                         _dialogs.SendSummon(card.Name);
-                        return new MainPhaseAction(MainPhaseAction.MainAction.SpSummon, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.SpSummon, card.ActionIndex), "SpSummon", card.Id, -1);
                     }
                 }
                 foreach (ClientCard card in main.SummonableCards)
@@ -526,31 +539,31 @@ namespace WindBot.Game
                     if (ShouldExecute(exec, card, ExecutorType.Summon))
                     {
                         _dialogs.SendSummon(card.Name);
-                        return new MainPhaseAction(MainPhaseAction.MainAction.Summon, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.Summon, card.ActionIndex), "Summon", card.Id, -1);
                     }
                     if (ShouldExecute(exec, card, ExecutorType.SummonOrSet))
                     {
                         if (main.MonsterSetableCards.Contains(card) && Executor.OnSelectMonsterSummonOrSet(card))
                         {
                             _dialogs.SendSetMonster();
-                            return new MainPhaseAction(MainPhaseAction.MainAction.SetMonster, card.ActionIndex);
+                            return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.SetMonster, card.ActionIndex), "SetMonster", card.Id, -1);
                         }
                         _dialogs.SendSummon(card.Name);
-                        return new MainPhaseAction(MainPhaseAction.MainAction.Summon, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.Summon, card.ActionIndex), "Summon", card.Id, -1);
                     }
                 }
                 foreach (ClientCard card in main.SpellSetableCards)
                 {
                     if (ShouldExecute(exec, card, ExecutorType.SpellSet))
-                        return new MainPhaseAction(MainPhaseAction.MainAction.SetSpell, card.ActionIndex);
+                        return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.SetSpell, card.ActionIndex), "SetSpell", card.Id, -1);
                 }
             }
 
             if (main.CanBattlePhase && Duel.Fields[0].HasAttackingMonster())
-                return new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase);
+                return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.ToBattlePhase), "ToBattlePhase", 0, -1);
 
             _dialogs.SendEndTurn();
-            return new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase);
+            return ObserveLegacyIdleAction(new MainPhaseAction(MainPhaseAction.MainAction.ToEndPhase), "ToEndPhase", 0, -1);
         }
 
         /// <summary>

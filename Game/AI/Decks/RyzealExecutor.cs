@@ -1,4192 +1,1348 @@
-using YGOSharp.OCGWrapper;
+using System;
+using System.Linq;
 using YGOSharp.OCGWrapper.Enums;
 using System.Collections.Generic;
-using System.Linq;
-using System;
 using WindBot;
 using WindBot.Game;
 using WindBot.Game.AI;
+using RyzealAI.Prototype;
 
 namespace WindBot.Game.AI.Decks
 {
-    [Deck("Ryzeal", "AI_Ryzeal")]
-    public class RyzealExecutor : DefaultExecutor
+    [Deck("Ryzeal", "AI_Ryzeal", "Easy")]
+    class RyzealExecutor : DefaultExecutor, IMainPhaseDecisionObserver
     {
+
+        #region Card IDs
+
         public class CardId
         {
+            // 덱에 사용되는 카드 ID (중복 카드 하나만 선언)
+            public const int NibiruThePrimalBeing = 27204311;
+            public const int StarRyzeal = 84433129;
             public const int IceRyzeal = 8633261;
             public const int SwordRyzeal = 35844557;
             public const int NodeRyzeal = 72238166;
-            public const int ExRyzeal = 34022970;
-            // _CardId.MulcharmyFuwalos;
-            // _CardId.MulcharmyPurulia;
-            // _CardId.MulcharmyNyalus;
-            // _CardId.AshBlossom;
-            // _CardId.GhostOgreAndSnowRabbit;
-            // _CardId.MaxxC;
-            // _CardId.LockBird;
-            // _CardId.EffectVeiler;
-
+            public const int ExtRyzeal = 34022970;
+            public const int MulcharmyFuwalos = 42141493;
+            public const int MulcharmyPurulia = 84192580;
+            public const int AshBlossomAndJoyousSpring = 14558127;
+            public const int GhostOgreAndSnowRabbit = 59438930;
+            public const int GhostBelleAndHauntedMansion = 73642296;
+            public const int MaxxC = 23434538;
             public const int SeventhTachyon = 7477101;
+            public const int SeventhAscension = 23153227;
             public const int TripleTacticsTalent = 25311006;
-            // _CardId.PotOfDesires;
+            public const int PotOfProsperity = 84211599;
             public const int Bonfire = 85106525;
-            // _CardId.CalledByTheGrave;
-            public const int RyzealPlugIn = 60394026;
-            // _CardId.CrossoutDesignator;
+            public const int CalledByTheGrave = 24224830;
+            public const int RyzealPlugin = 60394026;
+            public const int CrossoutDesignator = 65681983;
             public const int RyzealCross = 6798031;
+            public const int InfiniteImpermanence = 10045474;
+            public const int GravediggersTrapHole = 31548215;
+            public const int RyzealPlasmaHole = 33787730;
 
-            // _CardId.InfiniteImpermanence = 10045474;
-
+            // Extra Deck
+            public const int DivineArsenalAAZEUSSkyThunder = 90448279;
             public const int MereologicAggregator = 9940036;
             public const int RyzealDetonator = 34909328;
             public const int Number104Masquerade = 2061963;
-            public const int RyzealDuodrive = 7511613;
-            public const int TwinsOfTheEclipse = 45852939;
+            public const int RyzealDuoDrive = 7511613;
+            public const int EclipseTwins = 45852939;
             public const int FullArmoredUtopicRayLancer = 1269512;
             public const int TornadoDragon = 6983839;
-            // _CardId.Number41BagooskatheTerriblyTiredTapir
-            // _CardId.EvilswarmExcitonKnight
-            public const int StarliegePhotonBlastDragon = 16643334;
-            public const int AbyssDweller = 21044178;
-            public const int Number60DugaresTheTimeless = 66011101;
-            public const int DonnerDaggerFurHire = 8728498;
+            public const int EvilswarmExcitonKnight = 46772449;
+            public const int InfernalFlameBanshee = 29423048;
+            public const int TraptrixRafflesia = 6511113;
+            public const int NumberF0UtopicFutureZexal = 41522092;
         }
+
+        // 상태 추적 변수들 (필요시 추가)
+        private bool NormalSummonUsed = false;
+
+        // HOPT(카드별 "이 효과는 턴에 1번" 제약) 추적.
+        // *** 중요: 정정된 설계 ***
+        // Ryzeal 몬스터들은 실제로 카드 하나당 "룰 특수소환 효과(체인 안 씀)"와
+        // "발동형 효과(서치 등)"라는 서로 독립적인 턴당1번 제약을 두 개씩 갖고 있다.
+        // 한 쪽 효과가 이번 턴 이미 쓰였어도 다른 쪽 효과는 여전히 쓸 수 있어야 하므로
+        // (예: 2장째 Ice를 룰 특수소환해서 엑시즈 소재로 쓰는 플레이), 카드ID 하나에
+        // 플래그 하나로 묶으면 안 되고 효과종류별로 별도 추적해야 함.
+        private readonly HashSet<int> _activateEffectUsedThisTurn = new HashSet<int>();
+        private readonly HashSet<int> _specialSummonEffectUsedThisTurn = new HashSet<int>();
+
+        // Ice의 발동효과(c8633261.lua e2)는 "일반소환 성공시"에만 터지고 룰특수소환으론 안 터짐.
+        // NormalSummonUsed(범용 일반소환권 사용여부)와 별개로, "Ice 본인이 이번 턴에 일반소환됐는가"를
+        // 정확히 추적해야 해서 전용 플래그로 둠.
+        private bool _iceNormalSummonedThisTurn = false;
+
+        private bool IsActivateEffectUsedThisTurn(int cardId)
+        {
+            return _activateEffectUsedThisTurn.Contains(cardId);
+        }
+
+        private void MarkActivateEffectUsedThisTurn(int cardId)
+        {
+            _activateEffectUsedThisTurn.Add(cardId);
+        }
+
+        private bool IsSpecialSummonEffectUsedThisTurn(int cardId)
+        {
+            return _specialSummonEffectUsedThisTurn.Contains(cardId);
+        }
+
+        private void MarkSpecialSummonEffectUsedThisTurn(int cardId)
+        {
+            _specialSummonEffectUsedThisTurn.Add(cardId);
+        }
+
+        // 메인 Ryzeal 덱 카드 그룹 (기본 5장 + 메인덱 서포트)
+        private readonly int[] Ryzeals =
+        {
+            CardId.StarRyzeal,
+            CardId.IceRyzeal,
+            CardId.SwordRyzeal,
+            CardId.NodeRyzeal,
+            CardId.ExtRyzeal,
+            CardId.RyzealPlugin,
+            CardId.RyzealCross,
+            CardId.RyzealPlasmaHole
+        };
+
+        // Ryzeal 몬스터 전체 (기본 5장 + 추가 강화 카드)
+        private readonly int[] RyzealMonsters =
+        {
+            CardId.StarRyzeal,
+            CardId.IceRyzeal,
+            CardId.SwordRyzeal,
+            CardId.NodeRyzeal,
+            CardId.ExtRyzeal,
+            CardId.RyzealDetonator,
+            CardId.RyzealDuoDrive
+        };
+
+        // 카드의 실제 속성/종족을 런타임에 Deck에서 조회하지 않고,
+        // 현재 확정 덱에서 검색 가능한 범위를 정적으로 정의한다.
+        // Sword Ryzeal: LIGHT + Pyro
+        private readonly int[] PyroMonsters =
+        {
+            CardId.StarRyzeal,
+            CardId.IceRyzeal
+        };
+
+        // Ext Ryzeal: FIRE + Thunder
+        private readonly int[] ThunderMonsters =
+        {
+            CardId.SwordRyzeal,
+            CardId.NodeRyzeal,
+            CardId.ExtRyzeal
+        };
+
+        // 현재 덱에서 필드의 Rank 4 Xyz 소재로 활용할 수 있는 Level 4 몬스터.
+        // 특히 Ice 룰 특수소환의 코스트를 고를 때 필드의 Level 4를 최대한 보존한다.
+        private readonly int[] Level4Monsters =
+        {
+            CardId.StarRyzeal,
+            CardId.IceRyzeal,
+            CardId.SwordRyzeal,
+            CardId.NodeRyzeal,
+            CardId.ExtRyzeal,
+            CardId.MulcharmyFuwalos,
+            CardId.MulcharmyPurulia
+        };
 
         public RyzealExecutor(GameAI ai, Duel duel)
             : base(ai, duel)
         {
-            // counter
-            AddExecutor(ExecutorType.Activate, _CardId.CalledByTheGrave, CalledbytheGraveActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.CrossoutDesignator, CrossoutDesignatorActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.InfiniteImpermanence, InfiniteImpermanenceActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.EffectVeiler, EffectVeilerActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.GhostOgreAndSnowRabbit, GhostOgreAndSnowRabbitActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.AshBlossom, AshBlossomActivate);
+            // 1) 상대 효과 대응 (핸드트랩/무효화)
+            AddExecutor(ExecutorType.Activate, CardId.NibiruThePrimalBeing, NibiruEffect);
+            AddExecutor(ExecutorType.Activate, CardId.AshBlossomAndJoyousSpring, DefaultAshBlossomAndJoyousSpring);
+            AddExecutor(ExecutorType.Activate, CardId.GhostOgreAndSnowRabbit, DefaultGhostOgreAndSnowRabbit);
+            AddExecutor(ExecutorType.Activate, CardId.GhostBelleAndHauntedMansion, DefaultGhostBelleAndHauntedMansion);
+            AddExecutor(ExecutorType.Activate, CardId.MaxxC, DefaultMaxxC);
+            AddExecutor(ExecutorType.Activate, CardId.MulcharmyFuwalos, DefaultMulcharmyFuwalos);
+            AddExecutor(ExecutorType.Activate, CardId.MulcharmyPurulia, DefaultMulcharmyPurulia);
+            AddExecutor(ExecutorType.Activate, CardId.CalledByTheGrave, DefaultCalledByTheGrave);
+            AddExecutor(ExecutorType.Activate, CardId.CrossoutDesignator, CrossOutNegate);
+            AddExecutor(ExecutorType.Activate, CardId.InfiniteImpermanence, DefaultInfiniteImpermanence);
+            AddExecutor(ExecutorType.Activate, CardId.GravediggersTrapHole, DefaultUniqueTrap);
 
-            AddExecutor(ExecutorType.Activate, CardId.RyzealCross, RyzealCrossActivateCard);
-            AddExecutor(ExecutorType.Activate, _CardId.EvilswarmExcitonKnight, EvilswarmExcitonKnightActivate);
-            AddExecutor(ExecutorType.Activate, CardId.RyzealDetonator, RyzealDetonatorActivate);
-            AddExecutor(ExecutorType.Activate, CardId.RyzealDuodrive, RyzealDuodriveActivate);
-            AddExecutor(ExecutorType.Activate, CardId.TwinsOfTheEclipse, TwinsOfTheEclipseActivate);
-            AddExecutor(ExecutorType.Activate, CardId.AbyssDweller, AbyssDwellerActivate);
-            AddExecutor(ExecutorType.Activate, CardId.TornadoDragon, TornadoDragonActivate);
+            // Detonator optional on-summon attachment trigger. Other effects remain unsupported.
+            AddExecutor(ExecutorType.Activate, CardId.RyzealDetonator, DetonatorAttachEffect);
+            AddExecutor(ExecutorType.Activate, CardId.RyzealDetonator, DetonatorDestroyEffect);
+            AddExecutor(ExecutorType.Activate, CardId.RyzealDuoDrive, DuoDriveAttachEffect);
+            AddExecutor(ExecutorType.Activate, CardId.RyzealDuoDrive, DuoDriveSearchEffect);
 
-            // hand effect
-            AddExecutor(ExecutorType.Activate, _CardId.LockBird, LockBirdActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.MulcharmyPurulia, MulcharmyPuruliaActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.MulcharmyNyalus, MulcharmyNyalusActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.MulcharmyFuwalos, MulcharmyFuwalosActivate);
-            AddExecutor(ExecutorType.Activate, _CardId.MaxxC, MaxxCActivate);
+            // 2) 서치 / 초기 세팅
+            AddExecutor(ExecutorType.Activate, CardId.SeventhAscension, SeventhAscensionEffect);
+            AddExecutor(ExecutorType.Activate, CardId.SeventhTachyon, SeventhTachyonEffect);
+            AddExecutor(ExecutorType.Activate, CardId.Bonfire, BonfireEffect);
 
-            // pre-action activate
-            AddExecutor(ExecutorType.Activate, CardId.Bonfire, BonfireActivate);
-            AddExecutor(ExecutorType.Activate, CardId.DonnerDaggerFurHire, DonnerDaggerFurHireActivate);
-            AddExecutor(ExecutorType.Activate, CardId.Number60DugaresTheTimeless, Number60DugaresTheTimelessActivate);
-            AddExecutor(ExecutorType.Activate, CardId.TripleTacticsTalent, TripleTacticsTalentActivate);
-            AddExecutor(ExecutorType.Activate, CardId.Bonfire, BonfireActivateToSearchNecessary);
-            AddExecutor(ExecutorType.Activate, CardId.SeventhTachyon, SeventhTachyonActivate);
-
-            AddExecutor(ExecutorType.Repos, ChangePositionFirst);
-
-            // xyz summon
-            AddExecutor(ExecutorType.SpSummon, _CardId.EvilswarmExcitonKnight, EvilswarmExcitonKnightSpSummon);
-            AddExecutor(ExecutorType.SpSummon, LessSpSummonExtra);
-            AddExecutor(ExecutorType.SpSummon, CardId.RyzealDuodrive, FirstRyzealDuodriveSpSummon);
-            AddExecutor(ExecutorType.SpSummon, SecondXyzSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.TwinsOfTheEclipse, TwinsOfTheEclipseSpSummon);
-            AddExecutor(ExecutorType.SpSummon, FinalXyzSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.DonnerDaggerFurHire, DonnerDaggerFurHireSpSummon);
-
-            AddExecutor(ExecutorType.Activate, _CardId.PotOfDesires, PotOfDesireActivateForContinue);
-
-            AddExecutor(ExecutorType.Activate, CardId.RyzealPlugIn, RyzealPlugInActivateFirst);
-            AddExecutor(ExecutorType.Activate, CardId.NodeRyzeal, NodeRyzealActivateFirst);
-            AddExecutor(ExecutorType.Activate, CardId.RyzealCross, RyzealCrossActivateRecycleFirst);
-
-            // summon/spsummon
-            AddExecutor(ExecutorType.SpSummon, CardId.IceRyzeal, IceRyzealSpSummonFirst);
-            AddExecutor(ExecutorType.SpSummon, CardId.NodeRyzeal, NodeRyzealSpSummonFirst);
-
-            AddExecutor(ExecutorType.Summon, CardId.ExRyzeal, ExRyzealSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.ExRyzeal, ExRyzealSpSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.SwordRyzeal, SwordRyzealSpSummon);
+            // 2.5) 기본 Ryzeal 순차 전개
             AddExecutor(ExecutorType.Summon, CardId.IceRyzeal, IceRyzealSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.ExRyzeal, ExRyzealSpSummonLater);
-            AddExecutor(ExecutorType.Summon, CardId.SwordRyzeal, SwordRyzealSummon);
-            AddExecutor(ExecutorType.SpSummon, CardId.NodeRyzeal, NodeRyzealSpSummon);
-            AddExecutor(ExecutorType.Summon, Level4Summon);
-
-            AddExecutor(ExecutorType.Activate, CardId.NodeRyzeal, NodeRyzealActivate);
-            AddExecutor(ExecutorType.Activate, CardId.RyzealPlugIn, RyzealPlugInActivate);
+            AddExecutor(ExecutorType.Activate, CardId.IceRyzeal, IceRyzealEffect);
             AddExecutor(ExecutorType.SpSummon, CardId.IceRyzeal, IceRyzealSpSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.SwordRyzeal, SwordRyzealSpSummon);
+            AddExecutor(ExecutorType.SpSummon, CardId.NodeRyzeal, NodeRyzealSpSummon);
+            AddExecutor(ExecutorType.Activate, CardId.NodeRyzeal, NodeRyzealEffect);
+            AddExecutor(ExecutorType.SpSummon, CardId.ExtRyzeal, ExtRyzealSpSummon);
+            AddExecutor(ExecutorType.Activate, CardId.ExtRyzeal, ExtRyzealEffect);
+            AddExecutor(ExecutorType.SpSummon, CardId.StarRyzeal, StarRyzealSpSummon);
+            AddExecutor(ExecutorType.Activate, CardId.SwordRyzeal, SwordRyzealEffect);
 
-            // activate
-            AddExecutor(ExecutorType.Activate, CardId.MereologicAggregator, MereologicAggregatorActivateFirst);
-            AddExecutor(ExecutorType.Activate, CardId.IceRyzeal, IceRyzealActivate);
-            AddExecutor(ExecutorType.Activate, CardId.SwordRyzeal, SwordRyzealActivate);
-            AddExecutor(ExecutorType.Activate, CardId.ExRyzeal, ExRyzealActivate);
-            AddExecutor(ExecutorType.Activate, CardId.MereologicAggregator, MereologicAggregatorActivateLater);
+            // 3) 덱/엑스트라덱 활용
+            AddExecutor(ExecutorType.SpSummon, CardId.TraptrixRafflesia, TraptrixRafflesiaSummon);
 
-            // after summon
-            AddExecutor(ExecutorType.Activate, CardId.RyzealCross, RyzealCrossActivateRecycleLater);
-            AddExecutor(ExecutorType.Activate, _CardId.PotOfDesires, PotOfDesiresActivate);
-
+            // 기본 Spell/Trap/Repos 처리 (비-리질/비-아키타입 카드에 대해)
+            AddExecutor(ExecutorType.SpellSet, DefaultSpellSet);
             AddExecutor(ExecutorType.Repos, DefaultMonsterRepos);
-            AddExecutor(ExecutorType.SpellSet, SpellSetCheck);
+            AddExecutor(ExecutorType.Activate, CardId.PotOfProsperity, DefaultPotOfDesires);
+            AddExecutor(ExecutorType.Activate, CardId.TripleTacticsTalent, DefaultTrap);
 
+            // TODO: 추가 콤보/소환 로직 구현
         }
 
-        const int attrbuteLightDark = (int)CardAttribute.Light | (int)CardAttribute.Dark;
-        const int SetcodeTimeLord = 0x4a;
-        const int SetcodeAtlantean = 0x77;
-        const int SetcodeInfernoid = 0xbb;
-        const int SetcodeMajespecter = 0xd0;        
-        const int SetcodePhantomKnight = 0x10db;
-        const int SetcodeSkyStriker = 0x115;
-        const int SetcodeOrcust = 0x11b;
-        const int SetcodeSangen = 0x1a9;
-        const int SetcodeTenpaiDragon = 0x1aa;
-        const int SetcodeBranded = 0x160;
-        const int SetcodeFloowandereeze = 0x16d;
-        const int SetcodeLabrynth = 0x17f;
-        const int SetcodeTearlaments = 0x182;
-        const int SetcodeHorus = 0x3;
-        const int SetcodeRyzeal = 0x1b6;
-        const int hintTimingMainEnd = 0x4;
-        List<int> NotToNegateIdList = new List<int>
+        public override bool OnSelectHand()
         {
-            58699500, 20343502, 25451383, 19403423
-        };
-        List<int> AlbazFusionList = new List<int>
-        {
-            1906812, 38811586, 41373230, 44146295, 51409648, 76666602, 87746184, 03410461, 34848821
-        };
-        Dictionary<int, List<int>> DeckCountTable = new Dictionary<int, List<int>>{
-            {3, new List<int> { CardId.IceRyzeal, CardId.SwordRyzeal, CardId.ExRyzeal, _CardId.AshBlossom, _CardId.EffectVeiler, CardId.SeventhTachyon,
-                                _CardId.InfiniteImpermanence}},
-            {2, new List<int> { _CardId.MulcharmyFuwalos, _CardId.GhostOgreAndSnowRabbit, _CardId.MaxxC, _CardId.PotOfDesires, _CardId.CalledByTheGrave }},
-            {1, new List<int> { CardId.NodeRyzeal, _CardId.MulcharmyPurulia, _CardId.MulcharmyNyalus, _CardId.LockBird, CardId.TripleTacticsTalent,
-                                CardId.Bonfire, CardId.RyzealPlugIn, _CardId.CrossoutDesignator, CardId.RyzealCross}}
-        };
-        List<int> NotToDestroySpellTrap = new List<int> { 50005218, 6767771 };
-        List<int> targetNegateIdList = new List<int> {
-            _CardId.EffectVeiler, _CardId.InfiniteImpermanence, _CardId.GhostMournerMoonlitChill, _CardId.BreakthroughSkill, CardId.MereologicAggregator, 74003290, 67037924,
-            9753964, 66192538, 23204029, 73445448, 35103106, 30286474, 45002991, 5795980, 38511382, 53742162, 30430448
-        };
-        List<int> NeedIceToSolveIdList = new List<int> { 80978111, 87170768 };
-        List<ClientCard> currentCanActivateEffect = new List<ClientCard>();
-
-        int maxSummonCount = 1;
-        int summonCount = 1;
-        bool enemyActivateMaxxC = false;
-        bool enemyActivatePurulia = false;
-        bool enemyActivateFuwalos = false;
-        bool enemyActivateNyalus = false;
-        bool lockBirdSolved = false;
-        int dimensionShifterCount = 0;
-        bool botActivateMulcharmy = false;
-        bool botSolvingCross = false;
-        List<int> CheckSetcodeList = new List<int> { SetcodePhantomKnight, SetcodeOrcust, SetcodeAtlantean, SetcodeRyzeal, SetcodeTenpaiDragon, SetcodeSangen,
-            SetcodeInfernoid, SetcodeSkyStriker, SetcodeLabrynth, SetcodeTearlaments };
-        List<int> CheckBotSolvedList = new List<int> { _CardId.MaxxC, _CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, _CardId.MulcharmyNyalus,
-            CardId.AbyssDweller, _CardId.EvilswarmExcitonKnight, CardId.RyzealPlugIn };
-
-        bool enemyActivateInfiniteImpermanenceFromHand = false;
-        ClientCard DetonatorDestroySelf = null;
-
-        List<int> infiniteImpermanenceList = new List<int>();
-        List<ClientCard> currentNegateCardList = new List<ClientCard>();
-        List<ClientCard> currentDestroyCardList = new List<ClientCard>();
-        List<int> activatedCardIdList = new List<int>();
-        List<int> spSummonedCardIdList = new List<int>();
-        List<int> botSolvedCardIdList = new List<int>();
-        List<ClientCard> enemyPlaceThisTurn = new List<ClientCard>();
-        List<ClientCard> summonThisTurn = new List<ClientCard>();
-
-        List<ClientCard> hardToDestroyCardList = new List<ClientCard>();
-        List<ClientCard> cannotDestroyCardList = new List<ClientCard>();
-        HashSet<int> enemyDeckTypeRecord = new HashSet<int>();
-
-        /// <summary>
-        /// Shuffle List<ClientCard> and return a random-order card list
-        /// </summary>
-        public List<T> ShuffleList<T>(List<T> list)
-        {
-            List<T> result = list;
-            int n = result.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(result.Count);
-                int nextIndex = (index + Program.Rand.Next(result.Count - 1)) % result.Count;
-                T tempCard = result[index];
-                result[index] = result[nextIndex];
-                result[nextIndex] = tempCard;
-            }
-            return result;
-        }
-
-        public bool CheckCanBeTargeted(ClientCard card, bool canBeTarget, CardType selfType)
-        {
-            if (card == null) return true;
-            if (canBeTarget)
-            {
-                if (card.IsShouldNotBeTarget()) return false;
-                if (((int)selfType & (int)CardType.Monster) > 0 && card.IsShouldNotBeMonsterTarget()) return false;
-                if (((int)selfType & (int)CardType.Spell) > 0 && card.IsShouldNotBeSpellTrapTarget()) return false;
-                if (((int)selfType & (int)CardType.Trap) > 0
-                    && (card.IsShouldNotBeSpellTrapTarget() && !card.IsDisabled())) return false;
-            }
             return true;
         }
 
-        /// <summary>
-        /// Check remain cards in deck
-        /// </summary>
-        /// <param name="id">Card's ID</param>
-        public int CheckRemainInDeck(int id)
-        {
-            for (int count = 1; count < 4; ++count)
-            {
-                if (DeckCountTable[count].Contains(id)) {
-                    return Bot.GetRemainingCount(id, count);
-                }
-            }
-            return 0;
-        }
-
-        public int CheckRemainInDeck(params int[] ids)
-        {
-            int sum = 0;
-            foreach (int id in ids)
-            {
-                sum += CheckRemainInDeck(id);
-            }
-            return sum;
-        }
-
-        public bool CheckWhetherHaveFinalMonster()
-        {
-            foreach (ClientCard monster in Bot.MonsterZone)
-            {
-                if (monster == null) continue;
-                if (monster.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir) && monster.IsDefense()) return true;
-                if (monster.IsCode(CardId.AbyssDweller) && monster.Overlays.Count() > 0) return true;
-                if (monster.IsCode(CardId.RyzealDetonator) && monster.Overlays.Count() > 0) return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Check whether'll be negated
-        /// </summary>
-        /// <param name="isCounter">check whether card itself is disabled.</param>
-        public bool CheckWhetherNegated(bool disablecheck = true, bool toFieldCheck = false, CardType type = 0, bool ignore41 = false)
-        {
-            bool isMonster = type == 0 && Card.IsMonster();
-            isMonster |= ((int)type & (int)CardType.Monster) != 0;
-            bool isSpellOrTrap = type == 0 && (Card.IsSpell() || Card.IsTrap());
-            isSpellOrTrap |= (((int)type & (int)CardType.Spell) != 0) || (((int)type & (int)CardType.Trap) != 0);
-            bool isCounter = ((int)type & (int)CardType.Counter) != 0;
-            if (isSpellOrTrap && toFieldCheck && CheckSpellWillBeNegate(isCounter))
-                return true;
-            if (DefaultCheckWhetherCardIsNegated(Card)) return true;
-            if (isMonster && (toFieldCheck || Card.Location == CardLocation.MonsterZone))
-            {
-                if ((toFieldCheck && (((int)type & (int)CardType.Link) != 0)) || Card.IsDefense())
-                {
-                    if (Enemy.MonsterZone.Any(card => CheckNumber41(card, ignore41)) || Bot.MonsterZone.Any(card => CheckNumber41(card, ignore41))) return true;
-                }
-                if (Enemy.HasInSpellZone(_CardId.SkillDrain, true, true)) return true;
-            }
-            if (disablecheck) return (Card.Location == CardLocation.MonsterZone || Card.Location == CardLocation.SpellZone) && Card.IsDisabled() && Card.IsFaceup();
-            return false;
-        }
-
-        public bool CheckNumber41(ClientCard card, bool ignoreSelf41 = false)
-        {
-            return card != null && card.IsFaceup() && card.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir) && card.IsDefense() && !card.IsDisabled()
-                && (!ignoreSelf41 || card.Controller == 0);
-        }
-
-        /// <summary>
-        /// Whether spell or trap will be negated. If so, return true.
-        /// </summary>
-        /// <param name="isCounter">is counter trap</param>
-        /// <param name="target">check target</param>
-        /// <returns></returns>
-        public bool CheckSpellWillBeNegate(bool isCounter = false, ClientCard target = null)
-        {
-            // target default set
-            if (target == null) target = Card;
-            // won't negate if not on field
-            if (target.Location != CardLocation.SpellZone && target.Location != CardLocation.Hand) return false;
-
-            // negate judge
-            if (Enemy.HasInMonstersZone(_CardId.NaturalExterio, true) && !isCounter) return true;
-            if (target.IsSpell())
-            {
-                if (Enemy.HasInMonstersZone(_CardId.NaturiaBeast, true)) return true;
-                if (Enemy.HasInSpellZone(_CardId.ImperialOrder, true) || Bot.HasInSpellZone(_CardId.ImperialOrder, true)) return true;
-                if (Enemy.HasInMonstersZone(_CardId.SwordsmanLV7, true) || Bot.HasInMonstersZone(_CardId.SwordsmanLV7, true)) return true;
-            }
-            if (target.IsTrap() && (Enemy.HasInSpellZone(_CardId.RoyalDecreel, true) || Bot.HasInSpellZone(_CardId.RoyalDecreel, true))) return true;
-            if (target.Location == CardLocation.SpellZone && (target.IsSpell() || target.IsTrap()))
-            {
-                int selfSeq = -1;
-                for (int i = 0; i < 5; ++i)
-                {
-                    if (Bot.SpellZone[i] == Card) selfSeq = i;
-                }
-                if (infiniteImpermanenceList.Contains(selfSeq)) return true;
-            }
-            // how to get here?
-            return false;
-        }
-
-        /// <summary>
-        /// Check whether last chain card should be disabled.
-        /// </summary>
-        public bool CheckLastChainShouldNegated()
-        {
-            ClientCard lastcard = Util.GetLastChainCard();
-            if (lastcard == null || lastcard.Controller != 1) return false;
-            return CheckCardShouldNegate(lastcard);
-        }
-
-        public bool CheckCardShouldNegate(ClientCard card)
-        {
-            if (card == null) return false;
-            if (card.IsMonster() && card.HasSetcode(SetcodeTimeLord) && Duel.Phase == DuelPhase.Standby) return false;
-            if (NotToNegateIdList.Contains(card.Id)) return false;
-            if (card.HasSetcode(_Setcode.Danger) && card.Location == CardLocation.Hand) return false;
-            if (card.IsMonster() && card.Location == CardLocation.MonsterZone && card.HasPosition(CardPosition.Defence))
-            {
-                if (Enemy.MonsterZone.Any(c => CheckNumber41(c)) || Bot.MonsterZone.Any(c => CheckNumber41(c))) return false;
-            }
-            if (DefaultCheckWhetherCardIsNegated(card)) return false;
-            if (Duel.Player == 1 && card.IsCode(_CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, _CardId.MulcharmyNyalus)) return false;
-            if (card.IsDisabled()) return false;
-
-            return true;
-        }
-
-        public bool CheckCardShouldNegate(ChainInfo chainInfo)
-        {
-            if (chainInfo == null) return false;
-            ClientCard card = chainInfo.RelatedCard;
-
-            if (card == null) return false;
-            if (card.IsMonster() && card.HasSetcode(SetcodeTimeLord) && Duel.Phase == DuelPhase.Standby) return false;
-            if (NotToNegateIdList.Contains(card.Id)) return false;
-            if (card.HasSetcode(_Setcode.Danger) && card.Location == CardLocation.Hand) return false;
-            if (card.IsMonster() && chainInfo.HasLocation(CardLocation.MonsterZone) && chainInfo.HasPosition(CardPosition.Defence))
-            {
-                if (Enemy.MonsterZone.Any(c => CheckNumber41(c)) || Bot.MonsterZone.Any(c => CheckNumber41(c))) return false;
-            }
-            if (DefaultCheckWhetherCardIsNegated(card)) return false;
-            if (Duel.Player == 1 && card.IsCode(_CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, _CardId.MulcharmyNyalus)) return false;
-            if (card.IsDisabled()) return false;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Check whether bot is at advantage.
-        /// </summary>
-        public bool CheckAtAdvantage()
-        {
-            if (GetProblematicEnemyMonster() == null && (Duel.Player == 0 || Bot.GetMonsterCount() > 0)) return true;
-            return false;
-        }
-
-        public bool CheckShouldNoMoreSpSummon()
-        {
-            if (CheckAtAdvantage() && enemyActivateMaxxC && !lockBirdSolved && (Duel.Turn == 1 || Duel.Phase >= DuelPhase.Main2))
-            {
-                return true;
-            }
-            return false;
-        }
-
-        public bool CheckShouldNoMoreSpSummon(CardLocation loc)
-        {
-            if (CheckShouldNoMoreSpSummon()) return true;
-            if (lockBirdSolved || (Duel.Turn > 1 && Duel.Phase < DuelPhase.Main2)) return false;
-            if (enemyActivatePurulia && (loc & CardLocation.Hand) != 0) return true;
-            if (enemyActivateFuwalos && (loc & (CardLocation.Deck | CardLocation.Extra)) != 0) return true;
-            if (enemyActivateNyalus && (loc & (CardLocation.Grave | CardLocation.Removed)) != 0) return true;
-
-            return false;
-        }
-
-        public bool CheckWhetherCanSummon()
-        {
-            return Duel.Player == 0 && Duel.Phase < DuelPhase.End && summonCount > 0;
-        }
-
-        /// <summary>
-        /// Check whether cards will be removed. If so, do not send cards to grave.
-        /// </summary>
-        public bool CheckWhetherWillbeRemoved()
-        {
-            if (dimensionShifterCount > 0) return true;
-            List<int> checkIdList = new List<int> { _CardId.BanisheroftheRadiance, _CardId.BanisheroftheLight, _CardId.MacroCosmos, _CardId.DimensionalFissure,
-                _CardId.KashtiraAriseHeart, _CardId.MaskedHERODarkLaw };
-            foreach (int cardid in checkIdList)
-            {
-                List<ClientField> fields = new List<ClientField> { Bot, Enemy };
-                foreach (ClientField cf in fields)
-                {
-                    if (cf.HasInMonstersZone(cardid, true, false, true) || cf.HasInSpellZone(cardid, true, true))
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public ClientCard GetProblematicEnemyMonster(int attack = 0, bool canBeTarget = false, bool ignoreCurrentDestroy = false, CardType selfType = 0)
-        {
-            ClientCard floodagateCard = Enemy.GetMonsters().Where(c => c?.Data != null && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(c))
-                && c.IsFloodgate() && c.IsFaceup()
-                && CheckCanBeTargeted(c, canBeTarget, selfType)
-                && CheckShouldNotIgnore(c)).OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (floodagateCard != null) return floodagateCard;
-
-            ClientCard dangerCard = Enemy.MonsterZone.Where(c => c?.Data != null && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(c))
-                && c.IsMonsterDangerous() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)
-                && CheckShouldNotIgnore(c)).OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (dangerCard != null) return dangerCard;
-
-            ClientCard invincibleCard = Enemy.MonsterZone.Where(c => c?.Data != null && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(c))
-                && c.IsMonsterInvincible() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)
-                && CheckShouldNotIgnore(c)).OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (invincibleCard != null) return invincibleCard;
-
-            ClientCard equippedCard = Enemy.MonsterZone.Where(c => c?.Data != null && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(c))
-                && c.EquipCards.Count > 0 && CheckCanBeTargeted(c, canBeTarget, selfType)
-                && CheckShouldNotIgnore(c)).OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (equippedCard != null) return equippedCard;
-
-            ClientCard enemyExtraMonster = Enemy.MonsterZone.Where(c => c != null && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(c))
-                && (c.HasType(CardType.Fusion | CardType.Ritual | CardType.Synchro | CardType.Xyz) || (c.HasType(CardType.Link) && c.LinkCount >= 2))
-                && CheckCanBeTargeted(c, canBeTarget, selfType) && CheckShouldNotIgnore(c)).OrderByDescending(card => card.Attack).FirstOrDefault();
-            if (enemyExtraMonster != null) return enemyExtraMonster;
-
-            ClientCard activatingAlbaz = Enemy.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(68468459) && !c.IsDisabled()
-                && !currentDestroyCardList.Contains(c) && !currentNegateCardList.Contains(c) && Duel.CurrentChain.Contains(c));
-            if (activatingAlbaz != null) return activatingAlbaz;
-
-            if (attack >= 0)
-            {
-                if (attack == 0)
-                    attack = Util.GetBestAttack(Bot);
-                ClientCard betterCard = Enemy.MonsterZone.Where(card => card != null
-                    && card.GetDefensePower() >= attack && card.GetDefensePower() > 0 && card.IsAttack() && CheckCanBeTargeted(card, canBeTarget, selfType)
-                    && (ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))).OrderByDescending(card => card.Attack).FirstOrDefault();
-                if (betterCard != null) return betterCard;
-            }
-            return null;
-        }
-
-        public bool CheckShouldNotIgnore(ClientCard cards, bool ignore = false)
-        {
-            return !ignore || (!currentDestroyCardList.Contains(cards) && !currentNegateCardList.Contains(cards));
-        }
-
-        public bool CheckCanContinueSummon(bool skipDuodriver = false)
-        {
-            bool checkFlag = summonCount > 0 && !activatedCardIdList.Contains(CardId.IceRyzeal) && Bot.HasInHand(CardId.IceRyzeal)
-                && !DefaultCheckWhetherCardIdIsNegated(CardId.IceRyzeal);
-            if (Bot.HasInHand(CardId.SwordRyzeal) && !spSummonedCardIdList.Contains(CardId.SwordRyzeal)
-                && !activatedCardIdList.Contains(CardId.SwordRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.SwordRyzeal))
-            {
-                checkFlag |= Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal));
-                checkFlag |= Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal));
-            }
-            checkFlag |= !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !activatedCardIdList.Contains(CardId.ExRyzeal)
-                && Bot.HasInHand(CardId.ExRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.ExRyzeal) && !CheckWhetherWillbeRemoved();
-
-            checkFlag |= !activatedCardIdList.Contains(CardId.RyzealDuodrive + 1) && Bot.HasInExtra(CardId.RyzealDuodrive)
-                && !DefaultCheckWhetherCardIdIsNegated(CardId.RyzealDuodrive) && !CheckWhetherNegated(true, true, CardType.Monster)
-                && summonCount > 0 && Bot.Hand.Count(c => c.Level == 4) > 0 && GetLevel4CountOnField() == 1 && !lockBirdSolved
-                && !skipDuodriver;
-
-            return checkFlag;
-        }
-
-        /// <summary>
-        /// check enemy's dangerous card in grave
-        /// </summary>
-        public List<ClientCard> GetDangerousCardinEnemyGrave(bool onlyMonster = false)
-        {
-            List<ClientCard> result = Enemy.Graveyard.GetMatchingCards(card =>
-                (!onlyMonster || card.IsMonster()) && (card.HasSetcode(SetcodeOrcust) || card.HasSetcode(SetcodePhantomKnight) || card.HasSetcode(SetcodeHorus))).ToList();
-            List<int> dangerMonsterIdList = new List<int>{
-                99937011, 63542003, 9411399, 28954097, 30680659
-            };
-            result.AddRange(Enemy.Graveyard.GetMatchingCards(card => dangerMonsterIdList.Contains(card.Id)));
-            return result;
-        }
-
-        public List<ClientCard> GetProblematicEnemyCardList(bool canBeTarget = false, bool ignoreSpells = false, CardType selfType = 0)
-        {
-            List<ClientCard> resultList = new List<ClientCard>();
-
-            List<ClientCard> floodagateList = Enemy.MonsterZone.Where(c => c?.Data != null && !currentDestroyCardList.Contains(c)
-                && c.IsFloodgate() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).OrderByDescending(card => card.Attack).ToList();
-            if (floodagateList.Count > 0) resultList.AddRange(floodagateList);
-
-            List<ClientCard> problemEnemySpellList = Enemy.SpellZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
-                && c.IsFloodgate() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).ToList();
-            if (problemEnemySpellList.Count > 0) resultList.AddRange(ShuffleList(problemEnemySpellList));
-
-            List<ClientCard> dangerList = Enemy.MonsterZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
-                && c.IsMonsterDangerous() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).OrderByDescending(card => card.Attack).ToList();
-            if (dangerList.Count > 0
-                && (Duel.Player == 0 || (Duel.Phase > DuelPhase.Main1 && Duel.Phase < DuelPhase.Main2))) resultList.AddRange(dangerList);
-
-            List<ClientCard> invincibleList = Enemy.MonsterZone.Where(c => c?.Data != null && !resultList.Contains(c) && !currentDestroyCardList.Contains(c)
-                && c.IsMonsterInvincible() && c.IsFaceup() && CheckCanBeTargeted(c, canBeTarget, selfType)).OrderByDescending(card => card.Attack).ToList();
-            if (invincibleList.Count > 0) resultList.AddRange(invincibleList);
-
-            List<ClientCard> enemyMonsters = Enemy.GetMonsters().Where(c => !currentDestroyCardList.Contains(c)).OrderByDescending(card => card.Attack).ToList();
-            if (enemyMonsters.Count > 0)
-            {
-                foreach (ClientCard target in enemyMonsters)
-                {
-                    if ((target.HasType(CardType.Fusion | CardType.Ritual | CardType.Synchro | CardType.Xyz)
-                            || (target.HasType(CardType.Link) && target.LinkCount >= 2))
-                        && !resultList.Contains(target) && CheckCanBeTargeted(target, canBeTarget, selfType)
-                        )
-                    {
-                        resultList.Add(target);
-                    }
-                }
-            }
-
-            List<ClientCard> spells = Enemy.GetSpells().Where(c => c.IsFaceup() && !currentDestroyCardList.Contains(c)
-                && c.HasType(CardType.Equip | CardType.Pendulum | CardType.Field | CardType.Continuous) && CheckCanBeTargeted(c, canBeTarget, selfType)
-                && !NotToDestroySpellTrap.Contains(c.Id)).ToList();
-            if (spells.Count > 0 && !ignoreSpells) resultList.AddRange(ShuffleList(spells));
-
-            return resultList;
-        }
-
-        public List<ClientCard> GetNormalEnemyTargetList(bool canBeTarget = true, bool ignoreCurrentDestroy = false, CardType selfType = 0, bool forNegate = false)
-        {
-            List<ClientCard> targetList = GetProblematicEnemyCardList(canBeTarget, selfType: selfType);
-            List<ClientCard> enemyMonster = Enemy.GetMonsters().Where(card => card.IsFaceup() && !targetList.Contains(card)
-                && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))
-                && (!forNegate || (!card.IsDisabled() && card.HasType(CardType.Effect)))
-                ).ToList();
-            enemyMonster.Sort(CardContainer.CompareCardAttack);
-            enemyMonster.Reverse();
-            targetList.AddRange(enemyMonster);
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card =>
-                (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && enemyPlaceThisTurn.Contains(card) && card.IsFacedown()).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetSpells().Where(card =>
-                (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card)) && !enemyPlaceThisTurn.Contains(card) && card.IsFacedown()).ToList()));
-            targetList.AddRange(ShuffleList(Enemy.GetMonsters().Where(card => card.IsFacedown()
-                && (!ignoreCurrentDestroy || !currentDestroyCardList.Contains(card))
-                && (!forNegate || (!card.IsDisabled() && card.HasType(CardType.Effect)))
-                ).ToList()));
-
-            return targetList;
-        }
-
-        public List<ClientCard> GetMonsterListForTargetNegate(bool canBeTarget = false, CardType selfType = 0)
-        {
-            List<ClientCard> resultList = new List<ClientCard>();
-            if (CheckWhetherNegated())
-            {
-                return resultList;
-            }
-
-            // negate before used
-            ClientCard target = Enemy.MonsterZone.FirstOrDefault(card => card?.Data != null
-                    && card.IsMonsterShouldBeDisabledBeforeItUseEffect() && card.IsFaceup() && !card.IsShouldNotBeTarget()
-                    && CheckCanBeTargeted(card, canBeTarget, selfType)
-                    && !currentNegateCardList.Contains(card));
-            if (target != null)
-            {
-                resultList.Add(target);
-            }
-
-            // negate monster effect on the field
-            foreach (ClientCard chainingCard in Duel.CurrentChain)
-            {
-                if (chainingCard.Location == CardLocation.MonsterZone && chainingCard.Controller == 1 && !chainingCard.IsDisabled()
-                && CheckCanBeTargeted(chainingCard, canBeTarget, selfType) && !currentNegateCardList.Contains(chainingCard))
-                {
-                    if (chainingCard.HasPosition(CardPosition.Defence))
-                    {
-                        bool have41 = Bot.MonsterZone.Any(c => CheckNumber41(c)) | Enemy.MonsterZone.Any(c => CheckNumber41(c));
-                    }
-                    resultList.Add(chainingCard);
-                }
-            }
-
-            return resultList;
-        }
-
-        public List<ClientCard> GetLevel4OnField(Func<ClientCard, bool> filter)
-        {
-            return Bot.GetMonsters().Where(c => (filter == null || filter(c))
-                && c.IsFaceup() && !c.HasType(CardType.Xyz | CardType.Link) && c.Level == 4).OrderBy(c => c.GetDefensePower()).ToList();
-        }
-
-        public int GetLevel4CountOnField()
-        {
-            int count = Bot.GetMonsters().Count(c => c.IsFaceup() && !c.HasType(CardType.Xyz | CardType.Link) && c.Level == 4);
-            return count;
-        }
-
-        public int GetLevel4FinalCountOnField(bool checkSupport, out bool hasNode)
-        {
-            // check whether have 4 monsters for material.
-            // if not, skip the second xyz monster.
-            int level4Count = GetLevel4CountOnField();
-            if (Bot.HasInHand(CardId.ExRyzeal) && !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !CheckWhetherWillbeRemoved())
-            {
-                if (checkSupport ||
-                    (!activatedCardIdList.Contains(CardId.ExRyzeal) && Bot.MonsterZone.All(c => c != null && (c.IsFacedown() || !c.HasType(CardType.Link) && c.Level == 4))))
-                {
-                    level4Count++;
-                }
-            }
-            if (Bot.HasInHand(CardId.SwordRyzeal) && !spSummonedCardIdList.Contains(CardId.SwordRyzeal))
-            {
-                bool flag = Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal));
-                flag |= Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal));
-                if (flag)
-                {
-                    if (checkSupport || !activatedCardIdList.Contains(CardId.SwordRyzeal))
-                    {
-                        level4Count++;
-                    }
-                }
-            }
-            hasNode = Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.IsCode(CardId.NodeRyzeal) && !c.IsDisabled());
-            if (Bot.HasInHand(CardId.NodeRyzeal) && !spSummonedCardIdList.Contains(CardId.NodeRyzeal))
-            {
-                bool flag = Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz));
-                if (flag)
-                {
-                    hasNode = true;
-                    level4Count++;
-                }
-            }
-            if (Bot.HasInHand(CardId.RyzealPlugIn) && !CheckWhetherNegated(true, true, CardType.Spell) && checkSupport)
-            {
-                bool flag = false;
-                List<ClientCard> graveTargetList = Bot.Graveyard.Where(
-                    c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && !c.HasType(CardType.Xyz) && c.Level == 4).ToList();
-                flag |= graveTargetList.Count() > 0;
-                hasNode |= graveTargetList.Any(c => c.IsCode(CardId.NodeRyzeal));
-
-                List<ClientCard> banishedTargetList = Bot.Banished.Where(
-                    c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && !c.HasType(CardType.Xyz) && c.Level == 4).ToList();
-                flag |= banishedTargetList.Count() > 0;
-                hasNode |= banishedTargetList.Any(c => c.IsCode(CardId.NodeRyzeal));
-
-                if (flag) level4Count++;
-            }
-            hasNode &= !CheckWhetherWillbeRemoved() && !activatedCardIdList.Contains(CardId.NodeRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.NodeRyzeal);
-            hasNode &= Bot.Graveyard.Any(c => c != null && c.IsMonster() && c.HasSetcode(SetcodeRyzeal) && !c.IsCode(CardId.NodeRyzeal) && c.Level == 4);
-            if (hasNode)
-            {
-                bool flag = Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && !c.HasType(CardType.Xyz) && c.Level == 4 && !c.IsCode(CardId.NodeRyzeal));
-                if (flag)
-                {
-                    if (checkSupport || GetCostFromHandAndField(null, false).Count() > 0) level4Count++;
-                }
-            }
-            if (checkSupport)
-            {
-                int checkHandCount = 2;
-                if (summonCount > 0 && Bot.Hand.Any(c => c.Level == 4 && !c.IsCode(CardId.ExRyzeal, CardId.SwordRyzeal, CardId.NodeRyzeal)))
-                {
-                    level4Count++;
-                    checkHandCount++;
-                }
-                if (Bot.Hand.Count() >= checkHandCount && Bot.HasInHand(CardId.IceRyzeal) && !spSummonedCardIdList.Contains(CardId.IceRyzeal) && !CheckWhetherWillbeRemoved())
-                {
-                    level4Count++;
-                }
-            }
-
-            return level4Count;
-        }
-
-        public List<ClientCard> GetCostFromHandAndFieldFirst(ClientCard exceptCard)
-        {
-            return Bot.MonsterZone.Where(c => c != null && !c.IsDisabled() && c.IsCode(NeedIceToSolveIdList) && c != exceptCard && !c.HasType(CardType.Token)).ToList();
-        }
-
-        public List<ClientCard> GetCostFromHandAndField(ClientCard exceptCard, bool sendNotNecessary)
-        {
-            List<ClientCard> resultList = GetCostFromHandAndFieldFirst(exceptCard);
-            if (!activatedCardIdList.Contains(CardId.TwinsOfTheEclipse + 1))
-            {
-                List<ClientCard> xyzList = Bot.Graveyard.Where(c => c.HasType(CardType.Xyz)).ToList();
-                // sending twins
-                ClientCard twins = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(CardId.TwinsOfTheEclipse) && !resultList.Contains(c));
-                if (twins == null)
-                {
-                    twins = Bot.SpellZone.FirstOrDefault(c => c != null && c.IsCode(CardId.TwinsOfTheEclipse) && !resultList.Contains(c));
-                }
-                if (twins != null)
-                {
-                    int twinsXyzCount = 0;
-                    foreach (int cardId in twins.Overlays)
-                    {
-                        YGOSharp.OCGWrapper.NamedCard cardData = YGOSharp.OCGWrapper.NamedCard.Get(cardId);
-                        if (cardData != null && cardData.HasType(CardType.Xyz)) twinsXyzCount++;
-                    }
-                    bool flag = twinsXyzCount >= 2;
-                    flag |= twinsXyzCount > 0 && xyzList.Count() > 0;
-                    flag |= xyzList.Count() > 1 && xyzList.Count(c => c.IsCanRevive()) > 0;
-                    if (flag)
-                    {
-                        resultList.Add(twins);
-                    }
-                }
-            }
-
-            if (Bot.HasInSpellZone(CardId.RyzealCross, true, true))
-            {
-                // sending duodrive because not enough material on field
-                if (Bot.HasInExtra(CardId.RyzealDuodrive) && !activatedCardIdList.Contains(CardId.RyzealDuodrive + 1) && !lockBirdSolved)
-                {
-                    bool checkOverlay = true;
-                    ClientCard duoDrive = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(CardId.RyzealDuodrive) && !resultList.Contains(c));
-                    if (duoDrive == null)
-                    {
-                        checkOverlay = false;
-                        duoDrive = Bot.SpellZone.FirstOrDefault(c => c != null && c.IsCode(CardId.RyzealDuodrive) && !resultList.Contains(c));
-                    }
-                    if (duoDrive != null)
-                    {
-                        int overlayCount = Bot.MonsterZone.Sum(c => c != null ? c.Overlays.Count() : 0);
-                        if (!checkOverlay || overlayCount < 2)
-                        {
-                            resultList.Add(duoDrive);
-                        }
-                    }
-                }
-                // send Detonator with no overlay
-                if (Bot.HasInExtra(CardId.RyzealDetonator))
-                {
-                    ClientCard Detonator = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(CardId.RyzealDetonator) && c.Overlays.Count() == 0 && !resultList.Contains(c));
-                    if (Detonator != null)
-                    {
-                        resultList.Add(Detonator);
-                    }
-                }
-            }
-
-            // sending monsters in spell zone
-            List<ClientCard> monstersInSpellZone = Bot.SpellZone.Where(c => c != null && c.Data != null
-                && c.Data.HasType(CardType.Monster) && !c.Data.HasType(CardType.Pendulum | CardType.Token) && !resultList.Contains(c)).ToList();
-            resultList.AddRange(monstersInSpellZone);
-
-            // send enemy monsters
-            List<ClientCard> enemyMonsters = Bot.MonsterZone.Where(c => c != null && !resultList.Contains(c) && c.Owner == 1).ToList();
-            resultList.AddRange(enemyMonsters);
-
-            if (sendNotNecessary)
-            {
-                // send xyz monster with no material
-                List<ClientCard> xyzMonsterWithNoMaterial = Bot.MonsterZone.Where(
-                    c => c != null && c.HasType(CardType.Xyz) && c.GetDefensePower() < 2500 && c.Overlays.Count() == 0 && !resultList.Contains(c))
-                    .OrderBy(c => c.GetDefensePower()).ToList();
-                resultList.AddRange(xyzMonsterWithNoMaterial);
-
-                // sending unimportant card in hand
-                List<int> unimportantList = new List<int> { _CardId.MulcharmyNyalus, _CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, CardId.SeventhTachyon };
-                resultList.AddRange(Bot.Hand.Where(c => c != null && c.IsCode(unimportantList) && !resultList.Contains(c)));
-
-                // sending activated ryzeal monster
-                List<int> checkRyzealIdList = new List<int> { CardId.IceRyzeal, CardId.SwordRyzeal, CardId.ExRyzeal };
-                foreach (int checkId in checkRyzealIdList)
-                {
-                    if (summonCount == 0 && spSummonedCardIdList.Contains(checkId))
-                    {
-                        List<ClientCard> ryzealList = Bot.Hand.Where(c => c != null && c != exceptCard && !resultList.Contains(c) && c.IsCode(checkId)).ToList();
-                        resultList.AddRange(ryzealList);
-                    }
-                }
-
-                // sending dump cards
-                foreach (ClientCard card in Bot.Hand)
-                {
-                    if (Bot.Hand.Count(c => c != null && !resultList.Contains(c) && c.IsCode(card.Id)) > 1)
-                    {
-                        resultList.Add(card);
-                    }
-                }
-
-                if (resultList.Count() == 0)
-                {
-                    // sending other cards
-                    List<int> checkIdList = new List<int> { _CardId.CrossoutDesignator, _CardId.CalledByTheGrave, _CardId.InfiniteImpermanence,
-                        _CardId.GhostOgreAndSnowRabbit, _CardId.LockBird, _CardId.AshBlossom, _CardId.MaxxC };
-                    foreach (int checkId in checkIdList)
-                    {
-                        List<ClientCard> costList = Bot.Hand.Where(c => c != null && c != exceptCard && !resultList.Contains(c) && c.IsCode(checkId)).ToList();
-                        resultList.AddRange(costList);
-                    }
-                }
-            }
-
-            return resultList;
-        }
-
-        public int GetBotCurrentTotalAttack(List<ClientCard> exceptList = null)
-        {
-            if (Util.IsTurn1OrMain2() || botSolvedCardIdList.Contains(_CardId.EvilswarmExcitonKnight)) return 0;
-            int result = 0;
-            foreach (ClientCard monster in Bot.GetMonsters())
-            {
-                if (exceptList != null && exceptList.Contains(monster)) continue;
-                if (monster.IsAttack() || !summonThisTurn.Contains(monster)) result += monster.Attack;
-            }
-            return result;
-        }
-
-        public int GetNegateEffectCount()
-        {
-            int count = 0;
-            count += GetCalledbytheGraveIdCount(_CardId.MaxxC) < 2 && Bot.HasInHand(_CardId.MaxxC) ? 1 : 0;
-            count += GetCalledbytheGraveIdCount(_CardId.AshBlossom) < 2 && Bot.HasInHand(_CardId.AshBlossom) ? 1 : 0;
-            count += GetCalledbytheGraveIdCount(_CardId.EffectVeiler) < 2 && Bot.HasInHand(_CardId.EffectVeiler) ? 1 : 0;
-            count += GetCalledbytheGraveIdCount(_CardId.GhostOgreAndSnowRabbit) < 2 && Bot.HasInHand(_CardId.GhostOgreAndSnowRabbit) ? 1 : 0;
-            count += GetCalledbytheGraveIdCount(_CardId.LockBird) < 2 && Bot.HasInHand(_CardId.LockBird) ? 1 : 0;
-            count += Bot.SpellZone.Count(c => c != null && c.IsFacedown() && c.IsCode(_CardId.InfiniteImpermanence));
-            count += Math.Min(4 - Bot.GetSpellCountWithoutField(), Bot.Hand.Count(c => c.IsCode(_CardId.InfiniteImpermanence)));
-
-            return count;
-        }
-
-        public override BattlePhaseAction OnBattle(IList<ClientCard> attackers, IList<ClientCard> defenders)
-        {
-            if (attackers.Count() > 0 && defenders.Count() > 0)
-            {
-                List<ClientCard> sortedAttacker = attackers.OrderBy(card => card.Attack).ToList();
-                ClientCard rayLancer = attackers.FirstOrDefault(c => c.IsCode(CardId.FullArmoredUtopicRayLancer) && !c.IsDisabled());
-                if (rayLancer != null)
-                {
-                    sortedAttacker.Remove(rayLancer);
-                    sortedAttacker.Insert(0, rayLancer);
-                }
-                for (int k = 0; k < sortedAttacker.Count; ++k)
-                {
-                    ClientCard attacker = sortedAttacker[k];
-                    attacker.IsLastAttacker = k == sortedAttacker.Count - 1;
-                    BattlePhaseAction result = OnSelectAttackTarget(attacker, defenders);
-                    if (result != null)
-                        return result;
-                }
-            }
-
-            return base.OnBattle(attackers, defenders);
-        }
-
-        public override ClientCard OnSelectAttacker(IList<ClientCard> attackers, IList<ClientCard> defenders)
-        {
-
-            ClientCard twin = attackers.FirstOrDefault(c => c.IsCode(CardId.TwinsOfTheEclipse) && !c.IsDisabled());
-            if (twin != null)
-            {
-                if (Enemy.MonsterZone.Any(c => c != null && c.GetDefensePower() <= 2500))
-                {
-                    return twin;
-                }
-            }
-            return null;
-        }
-
-        public override void OnSelectChain(IList<ClientCard> cards)
-        {
-            if (cards != null && cards.Count() > 0)
-            {
-                currentCanActivateEffect.Clear();
-                currentCanActivateEffect.AddRange(cards);
-            }
-            base.OnSelectChain(cards);
-        }
-
+        // 우선순위: Seventh Ascension -> Seventh Tachyon -> Bonfire -> 기타는 Default_OnSelectCard
+        //          (Then: Ext Ryzeal / Ice Ryzeal search priority)
         public override IList<ClientCard> OnSelectCard(IList<ClientCard> cards, int min, int max, long hint, bool cancelable)
         {
-            ChainInfo currentSolvingChain = Duel.GetCurrentSolvingChainInfo();
-            ClientCard solvingCard = currentSolvingChain?.RelatedCard;
-            string cardOptionsText =   cards == null ? "null": string.Join(" | ", cards.Select(c => c == null
-                    ? "null" : $"Id={c.Id}, Name={(c.Name ?? "Unknown")}, Loc={c.Location},"));
-
-            int solvingPlayer = currentSolvingChain?.ActivatePlayer ?? Duel.LastChainPlayer;
-            if (currentSolvingChain != null)
+            // Detach cost and target occur before this activation is added to CurrentChain.
+            // Route using the explicitly accepted activation, not the previous chain card.
+            if (_pendingDetonatorDestroySource != null && cards.Count > 0)
             {
-                if (botSolvingCross)
+                if (cards.All(c => c.Location == CardLocation.Overlay))
                 {
-                    if (hint == HintMsg.DeattachFrom)
+                    var chosen = cards.OrderBy(c => IsRyzealMonster(c.Id) ? 0 : 1)
+                        .ThenBy(c => c.Id).Take(min).ToList();
+                    if (chosen.Count == min)
                     {
-                        List<Func<ClientCard, bool>> funcList = new List<Func<ClientCard, bool>>
-                        {
-                            (c) => c.IsDisabled() && c.IsCode(CardId.RyzealDuodrive),
-                            (c) => c.IsCode(CardId.RyzealDuodrive),
-                            (c) => c.IsDisabled() && c.IsCode(CardId.RyzealDetonator),
-                            (c) => c.IsCode(CardId.RyzealDetonator)
-                        };
-                        foreach (Func<ClientCard, bool> func in funcList)
-                        {
-                            ClientCard target = cards.FirstOrDefault(c => c != null && func(c));
-                            if (target != null)
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                            }
-                        }
-                    }
-
-                    if (hint == HintMsg.RemoveXyz)
-                    {
-                        List<ClientCard> targets = cards.OrderBy(c => c.Attack).ToList();
-                        botSolvingCross = false;
-                        return Util.CheckSelectCount(targets, cards, min, max);
+                        foreach (var c in chosen)
+                            _decisionLogger.WriteSelection("DetonatorDestroyDetach", Duel.Turn, cards.Select(x => x.Id), c.Id);
+                        return chosen;
                     }
                 }
-
-                if (solvingPlayer == 1 && solvingCard.IsCode(_CardId.EvenlyMatched))
+                if (hint == (long)HintMsg.Destroy && min == 1 && max == 1)
                 {
-                	Logger.DebugWriteLine("=== Evenly Matched activated.");
-                    List<ClientCard> banishList = new List<ClientCard>();
-                    List<ClientCard> botMonsters = Bot.GetMonsters().Where(card => !card.HasType(CardType.Token)).ToList();
-
-                    // monster
-                    List<ClientCard> faceDownMonsters = botMonsters.Where(card => card.IsFacedown()).ToList();
-                    banishList.AddRange(faceDownMonsters);
-                    List<ClientCard> dumpMainMonsterList = botMonsters.Where(card => !banishList.Contains(card)
-                        && CheckRemainInDeck(card.Id) > 0).ToList();
-                    dumpMainMonsterList.Sort(CardContainer.CompareCardAttack);
-                    banishList.AddRange(dumpMainMonsterList);
-
-                    // spells
-                    bool canUsePluginToSpSummonDetonator = Bot.Graveyard.Any(c => c != null && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-                    canUsePluginToSpSummonDetonator |= Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-
-                    List<ClientCard> faceUpSpells = Bot.GetSpells().Where(c => c.IsFaceup()).ToList();
-                    banishList.AddRange(ShuffleList(faceUpSpells));
-                    List<ClientCard> faceDownSpells = Bot.GetSpells().Where(c => c.IsFacedown()
-                        && !(canUsePluginToSpSummonDetonator && c.IsCode(CardId.RyzealPlugIn))).ToList();
-                    banishList.AddRange(ShuffleList(faceDownSpells));
-
-                    List<ClientCard> uniqueMainMonster = botMonsters.Where(card => !banishList.Contains(card)
-                        && !card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link) && CheckRemainInDeck(card.Id) == 0).ToList();
-                    uniqueMainMonster.Sort(CardContainer.CompareCardAttack);
-                    banishList.AddRange(uniqueMainMonster);
-
-                    List<ClientCard> dumpExtraMonsterList = botMonsters.Where(card => !banishList.Contains(card)
-                        && card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link) && Bot.HasInExtra(card.Id)).ToList();
-                    dumpExtraMonsterList.Sort(CardContainer.CompareCardAttack);
-                    banishList.AddRange(dumpExtraMonsterList);
-
-                    List<ClientCard> uniqueExtraMonsterList = botMonsters.Where(card => !banishList.Contains(card)
-                        && card.HasType(CardType.Fusion | CardType.Synchro | CardType.Xyz | CardType.Link) && !Bot.HasInExtra(card.Id)).ToList();
-                    uniqueExtraMonsterList.Sort(CardContainer.CompareCardAttack);
-                    banishList.AddRange(uniqueExtraMonsterList);
-
-                    return Util.CheckSelectCount(banishList, cards, min, max);
+                    var chosen = cards.Where(c => c.Controller == 1)
+                        .OrderByDescending(c => c.IsFaceup())
+                        .ThenBy(c => c.Id).FirstOrDefault();
+                    _pendingDetonatorDestroySource = null;
+                    if (chosen != null)
+                    {
+                        _decisionLogger.WriteSelection("DetonatorDestroyTarget", Duel.Turn, cards.Select(x => x.Id), chosen.Id);
+                        return new List<ClientCard> { chosen };
+                    }
+                    // The actual prompt may differ from the field snapshot; let host handle it.
                 }
-
-                if (currentSolvingChain.ActivatePlayer == 0)
+            }
+            // Resolution can concern an earlier chain link, not the last activated card.
+            ClientCard current = Duel.SolvingChainIndex > 0 && Duel.SolvingChainIndex <= Duel.CurrentChain.Count
+                ? Duel.CurrentChain[Duel.SolvingChainIndex - 1] : Util.GetLastChainCard();
+            // Handle engine-offered selections only; do not queue detach as an activation cost.
+            if (current != null && current.Id == CardId.RyzealDuoDrive && cards.Count > 0)
+            {
+                if (cards.All(c => c.Location == CardLocation.Overlay))
                 {
-                    if (hint == HintMsg.AddToHand)
-                    {
-                        if (solvingCard.IsCode(CardId.SwordRyzeal))
-                        {
-                            ClientCard ice = cards.FirstOrDefault(c => c.IsCode(CardId.IceRyzeal));
-                            ClientCard ex = cards.FirstOrDefault(c => c.IsCode(CardId.ExRyzeal));
-                            if (ice != null)
-                            {
-                                bool canSummonAndActivateIce = Duel.Player == 0 && summonCount > 0 && Duel.Phase < DuelPhase.End;
-                                bool flag = canSummonAndActivateIce && !Bot.HasInHand(CardId.IceRyzeal)
-                                    && !activatedCardIdList.Contains(CardId.IceRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.IceRyzeal);
-                                flag |= ex == null;
-                                flag |= Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() && c.IsCode(NeedIceToSolveIdList))
-                                    && !spSummonedCardIdList.Contains(CardId.IceRyzeal) && !CheckWhetherWillbeRemoved();
-                                if (!canSummonAndActivateIce)
-                                {
-                                    flag |= DefaultCheckWhetherCardIdIsNegated(CardId.ExRyzeal);
-                                    flag |= spSummonedCardIdList.Contains(CardId.ExRyzeal) || activatedCardIdList.Contains(CardId.ExRyzeal);
-                                }
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { ice }, cards, min, max);
-                                }
-                            }
-                            if (ex != null)
-                            {
-                                bool flag = !Bot.HasInHand(CardId.ExRyzeal) && !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !activatedCardIdList.Contains(CardId.ExRyzeal);
-                                flag |= Bot.HasInHand(CardId.IceRyzeal);
-                                flag |= ice == null;
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { ex }, cards, min, max);
-                                }
-                            }
-                        }
-
-                        if (solvingCard.IsCode(CardId.ExRyzeal))
-                        {
-                            ClientCard sword = cards.FirstOrDefault(c => c.IsCode(CardId.SwordRyzeal));
-                            ClientCard node = cards.FirstOrDefault(c => c.IsCode(CardId.NodeRyzeal));
-                            if (sword != null)
-                            {
-                                bool flag = node == null;
-                                flag |= !Bot.HasInHand(CardId.SwordRyzeal) && !spSummonedCardIdList.Contains(CardId.SwordRyzeal) && !activatedCardIdList.Contains(CardId.SwordRyzeal);
-
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { sword }, cards, min, max);
-                                }
-                            }
-                            if (node != null)
-                            {
-                                bool flag = sword == null;
-                                flag |= spSummonedCardIdList.Contains(CardId.SwordRyzeal) && activatedCardIdList.Contains(CardId.SwordRyzeal)
-                                    && !DefaultCheckWhetherCardIdIsNegated(CardId.SwordRyzeal);
-                                flag |= CheckShouldNoMoreSpSummon(CardLocation.Hand) && !CheckShouldNoMoreSpSummon(CardLocation.Grave)
-                                    && !spSummonedCardIdList.Contains(CardId.NodeRyzeal);
-
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { node }, cards, min, max);
-                                }
-                            }
-                        }
-
-                        if (solvingCard.IsCode(CardId.Bonfire) || solvingCard.IsCode(CardId.SeventhTachyon))
-                        {
-                            if (!Bot.HasInHand(CardId.ExRyzeal) && !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !CheckWhetherWillbeRemoved())
-                            {
-                                ClientCard target = cards.FirstOrDefault(c => c.IsCode(CardId.ExRyzeal));
-                                if (target != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                }
-                            }
-                            if (!Bot.HasInHand(CardId.IceRyzeal))
-                            {
-                                bool flag = summonCount > 0 && !activatedCardIdList.Contains(CardId.IceRyzeal);
-                                flag |= !spSummonedCardIdList.Contains(CardId.IceRyzeal) && Bot.Hand.Count > 0;
-                                if (flag)
-                                {
-                                    ClientCard target = cards.FirstOrDefault(c => c.IsCode(CardId.IceRyzeal));
-                                    if (target != null)
-                                    {
-                                        return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                    }
-                                }
-                            }
-                            List<int> searchTargetList = new List<int> { CardId.ExRyzeal, CardId.IceRyzeal };
-                            foreach (int targetId in searchTargetList)
-                            {
-                                ClientCard target = cards.FirstOrDefault(c => c.IsCode(targetId));
-                                if (target != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                }
-                            }
-                        }
-
-                        if (solvingCard.IsCode(CardId.RyzealDuodrive))
-                        {
-                            // search spells
-                            bool spellNegated = CheckWhetherNegated(true, true, CardType.Spell);
-                            if (!spellNegated)
-                            {
-                                ClientCard cross = cards.FirstOrDefault(c => c.IsCode(CardId.RyzealCross));
-                                if (cross != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { cross }, cards, min, max);
-                                }
-
-                                ClientCard plugin = cards.FirstOrDefault(c => c.IsCode(CardId.RyzealPlugIn));
-                                if (plugin != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { plugin }, cards, min, max);
-                                }
-                            }
-
-                            // search for spsummon
-                            List<KeyValuePair<int, Func<bool>>> checkList = new List<KeyValuePair<int, Func<bool>>>
-                            {
-                                new KeyValuePair<int, Func<bool>>(CardId.IceRyzeal,
-                                () => Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() && c.IsCode(NeedIceToSolveIdList))
-                                    && !spSummonedCardIdList.Contains(CardId.IceRyzeal) && !CheckWhetherWillbeRemoved() ),
-                                new KeyValuePair<int, Func<bool>>(CardId.ExRyzeal,
-                                () => !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !activatedCardIdList.Contains(CardId.ExRyzeal)
-                                    && !DefaultCheckWhetherCardIdIsNegated(CardId.ExRyzeal) && !CheckWhetherWillbeRemoved() ),
-                                new KeyValuePair<int, Func<bool>>(CardId.IceRyzeal,
-                                () => summonCount > 0 && !activatedCardIdList.Contains(CardId.IceRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.IceRyzeal) ),
-                                new KeyValuePair<int, Func<bool>>(CardId.SwordRyzeal,
-                                () => !spSummonedCardIdList.Contains(CardId.SwordRyzeal) && !activatedCardIdList.Contains(CardId.SwordRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.SwordRyzeal) ),
-                                new KeyValuePair<int, Func<bool>>(CardId.NodeRyzeal,
-                                () => !spSummonedCardIdList.Contains(CardId.NodeRyzeal) )
-                            };
-                            foreach (KeyValuePair<int, Func<bool>> pair in checkList)
-                            {
-                                bool alreadyInHand = Bot.HasInHand(pair.Key);
-                                bool shouldSearch = pair.Value();
-                                if (!alreadyInHand && shouldSearch)
-                                {
-                                    ClientCard target = cards.FirstOrDefault(c => c.IsCode(pair.Key));
-                                    if (target != null)
-                                    {
-                                        return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                    }
-                                }
-                            }
-
-                            // search not exists
-                            List<int> searchList = new List<int> { CardId.ExRyzeal, CardId.IceRyzeal, CardId.SwordRyzeal, CardId.NodeRyzeal };
-                            foreach (int id in searchList)
-                            {
-                                if (!Bot.HasInHand(id))
-                                {
-                                    ClientCard target = cards.FirstOrDefault(c => c.IsCode(id));
-                                    if (target != null)
-                                    {
-                                        return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                    }
-                                }
-                            }
-
-                            // random search
-                            return Util.CheckSelectCount(ShuffleList(cards.ToList()), cards, min, max);
-                        }
-                    }
-
-                    if (hint == HintMsg.SpSummon)
-                    {
-                        if (solvingCard.IsCode(CardId.IceRyzeal))
-                        {
-                            ClientCard sword = cards.FirstOrDefault(c => c.IsCode(CardId.SwordRyzeal));
-                            ClientCard ex = cards.FirstOrDefault(c => c.IsCode(CardId.ExRyzeal));
-                            ClientCard node = cards.FirstOrDefault(c => c.IsCode(CardId.NodeRyzeal));
-                            if (sword != null)
-                            {
-                                bool flag = !activatedCardIdList.Contains(CardId.SwordRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.SwordRyzeal);
-                                flag |= Bot.HasInHand(CardId.ExRyzeal) && !spSummonedCardIdList.Contains(CardId.ExRyzeal);
-                                flag |= ex == null && node == null;
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { sword }, cards, min, max);
-                                }
-                            }
-                            if (ex != null)
-                            {
-                                bool flag = !activatedCardIdList.Contains(CardId.ExRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.ExRyzeal);
-                                flag |= Bot.HasInHand(CardId.SwordRyzeal) && !spSummonedCardIdList.Contains(CardId.SwordRyzeal);
-                                flag |= sword == null && node == null;
-                                if (flag)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { ex }, cards, min, max);
-                                }
-                            }
-                            if (node != null)
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { node }, cards, min, max);
-                            }
-                        }
-
-                        if (solvingCard.IsCode(CardId.TwinsOfTheEclipse))
-                        {
-                            ClientCard target = TwinsOfTheEclipseRebornTarget(new List<ClientCard>(cards));
-
-                            return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                        }
-                    }
-
-                    if (hint == HintMsg.ToDeck)
-                    {
-                        if (solvingCard.IsCode(CardId.TripleTacticsTalent))
-                        {
-                            foreach (ClientCard hand in cards)
-                            {
-                                foreach (int setcode in CheckSetcodeList)
-                                {
-                                    if (hand.HasSetcode(setcode))
-                                    {
-                                        enemyDeckTypeRecord.Add(setcode);
-                                    }
-                                }
-                            }
-                            return Util.CheckSelectCount(ShuffleList(cards.ToList()), cards, min, max);
-                        }
-                    }
-
-                    if (hint == HintMsg.XyzMaterial)
-                    {
-                        if (solvingCard.IsCode(CardId.RyzealDetonator, CardId.RyzealDuodrive, CardId.RyzealPlugIn))
-                        {
-                            // material that have effect
-                            ClientCard effectTarget = cards.FirstOrDefault(c => c.IsCode(CardId.TwinsOfTheEclipse, CardId.MereologicAggregator));
-                            if (effectTarget != null)
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { effectTarget }, cards, min, max);
-                            }
-                            // cards in hand
-                            foreach (ClientCard card in cards)
-                            {
-                                if (Bot.Hand.Count(c => c.IsCode(card.Id)) > 0) 
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { card }, cards, min, max);
-                                }
-                            }
-                            // dump card
-                            foreach (ClientCard card in cards)
-                            {
-                                if (cards.Count(c => c.IsCode(card.Id)) > 1) {
-                                    return Util.CheckSelectCount(new List<ClientCard> { card }, cards, min, max);
-                                }
-                            }
-                        }
-                    }
-
-                    if (hint == HintMsg.RemoveXyz)
-                    {
-                        if (solvingCard.IsCode(CardId.RyzealDuodrive))
-                        {
-                            List<ClientCard> resultList = new List<ClientCard>();
-
-                            List<int> detachOwnerIdList = new List<int> { CardId.StarliegePhotonBlastDragon, CardId.RyzealDuodrive, CardId.TwinsOfTheEclipse,
-                                CardId.FullArmoredUtopicRayLancer, _CardId.EvilswarmExcitonKnight, CardId.Number60DugaresTheTimeless, CardId.RyzealDetonator };
-                            foreach (int ownerId in  detachOwnerIdList)
-                            {
-                                // detach from DuoDrive first
-                                List<ClientCard> detachMaterialList = cards.Where(c => c.OwnTargets.Any(oc => oc.IsCode(ownerId))).ToList();
-                                if (detachMaterialList.Count() > 0)
-                                {
-                                    // Detonator
-                                    ClientCard Detonator = detachMaterialList.FirstOrDefault(c => c.IsCode(CardId.RyzealDetonator));
-                                    if (Detonator != null)
-                                    {
-                                        resultList.Add(Detonator);
-                                    }
-                                    List<Func<ClientCard, bool>> filterList = new List<Func<ClientCard, bool>>
-                                    {
-                                        (c) => !resultList.Contains(c)
-                                            && !c.IsCode(CardId.MereologicAggregator, CardId.TwinsOfTheEclipse)
-                                            && Bot.HasInSpellZone(CardId.RyzealCross) && c.HasSetcode(SetcodeRyzeal)
-                                            && (c.Data == null || ((c.Data.Attribute & attrbuteLightDark) != 0)),
-                                        (c) => !resultList.Contains(c)
-                                            && !c.IsCode(CardId.MereologicAggregator, CardId.TwinsOfTheEclipse)
-                                            && Bot.HasInSpellZone(CardId.RyzealCross) && c.HasSetcode(SetcodeRyzeal),
-                                        (c) => !resultList.Contains(c)
-                                            && !c.IsCode(CardId.MereologicAggregator, CardId.TwinsOfTheEclipse)
-                                            && (c.Data == null || ((c.Data.Attribute & attrbuteLightDark) != 0)),
-                                        (c) => !resultList.Contains(c)
-                                            && !c.IsCode(CardId.MereologicAggregator, CardId.TwinsOfTheEclipse),
-                                        (c) => !resultList.Contains(c)
-                                    };
-                                    foreach (Func<ClientCard, bool> filter in filterList)
-                                    {
-                                        foreach (ClientCard material in detachMaterialList)
-                                        {
-                                            if (filter(material))
-                                            {
-                                                resultList.Add(material);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            return Util.CheckSelectCount(resultList, cards, min, max);
-                        }
-                    }
-
-                    // choose attach material by plugin from Deck
-                    if (solvingCard.IsCode(CardId.RyzealPlugIn) && cards.All(c => c.Location == CardLocation.Deck))
-                    {
-                        List<int> priority = new List<int>
-                        {
-                            CardId.ExRyzeal,
-                            CardId.IceRyzeal,
-                            CardId.SwordRyzeal,
-                            CardId.NodeRyzeal
-                        };
-                        foreach (int id in priority)
-                        {
-                            ClientCard target = cards.FirstOrDefault(c => c.IsCode(id));
-                            if (target != null)
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                            }
-                        }
-                    }
-
-                    // gain material by plugin
-                    if (solvingCard.IsCode(CardId.RyzealPlugIn) && cards.All(c => c.Location == CardLocation.MonsterZone))
-                    {
-                        ClientCard abyssDweller = cards.FirstOrDefault(c => c != null && !c.IsDisabled() && c.IsCode(CardId.AbyssDweller) && c.Overlays.Count() < 2);
-                        if (abyssDweller != null && AbyssDwellerSummonCheck())
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { abyssDweller }, cards, min, max);
-                        }
-
-                        ClientCard duoDriver = cards.FirstOrDefault(c => c != null && !c.IsDisabled() && c.IsCode(CardId.RyzealDuodrive) && c.Overlays.Count() == 1);
-                        if (duoDriver != null && Bot.HasInMonstersZone(CardId.StarliegePhotonBlastDragon, true, false, true))
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { duoDriver }, cards, min, max);
-                        }
-
-                        ClientCard Detonator = cards.FirstOrDefault(c => c != null && !c.IsDisabled() && c.IsCode(CardId.RyzealDetonator));
-                        if (Detonator != null)
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { Detonator }, cards, min, max);
-                        }
-
-                        if (Bot.HasInSpellZone(CardId.RyzealCross, true, true))
-                        {
-                            ClientCard ryzealXyz = cards.FirstOrDefault(c => c != null && c.HasSetcode(SetcodeRyzeal));
-                            if (ryzealXyz != null)
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { ryzealXyz }, cards, min, max);
-                            }
-                        }
-
-                        ClientCard tornadoDragon = cards.FirstOrDefault(c => c != null && !c.IsDisabled() && c.IsCode(CardId.TornadoDragon) && c.Overlays.Count() == 1);
-                        if (tornadoDragon != null && TornadoDragonSummonCheck())
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { tornadoDragon }, cards, min, max);
-                        }
-
-                        ClientCard no41 = cards.FirstOrDefault(c => c != null && c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-                        if (no41 != null && Number41BagooskatheTerriblyTiredTapirSummonCheck())
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { no41 }, cards, min, max);
-                        }
-
-                        duoDriver = cards.FirstOrDefault(c => c != null && !c.IsDisabled() && c.IsCode(CardId.RyzealDuodrive));
-                        if (duoDriver != null)
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { duoDriver }, cards, min, max);
-                        }
-                    }
-
-                    // double attack
-                    if (solvingCard.IsCode(CardId.Number60DugaresTheTimeless) && cards.All(c => c.Location == CardLocation.MonsterZone))
-                    {
-                        ClientCard maxAttackMonster = cards.Where(c => c != null && (c.HasPosition(CardPosition.FaceUpAttack) || !summonThisTurn.Contains(c)))
-                            .OrderByDescending(c => c.Attack).FirstOrDefault();
-                        if (maxAttackMonster != null)
-                        {
-                            return Util.CheckSelectCount(new List<ClientCard> { maxAttackMonster }, cards, min, max);
-                        }
-                    }
+                    var chosen = cards.OrderBy(c => IsRyzealMonster(c.Id) ? 0 : 1)
+                        .ThenBy(c => c.Id).Take(min).ToList();
+                    foreach (var c in chosen)
+                        _decisionLogger.WriteSelection("DuoDriveDetach", Duel.Turn, cards.Select(x => x.Id), c.Id);
+                    if (chosen.Count == min) return chosen;
                 }
-
-                // hand solve
-                if (hint == HintMsg.ToDeck || hint == HintMsg.ToGrave || hint == HintMsg.Discard)
+                if (cards.All(c => c.Location == CardLocation.Deck))
                 {
-                    bool allBotHand = cards.All(c => c.Controller == 0 && c.Location == CardLocation.Hand);
-                    if (allBotHand)
+                    // Verified upstream OnSelectUnselectCard exposes only selectable first-group
+                    // cards, calls OnSelectCard(min=1,max=1), and min=0 when finishable.
+                    // Select one valid card each time; return empty when engine allows finishing.
+                    if (min == 0 && cancelable) return new List<ClientCard>();
+                    var chosen = cards.GroupBy(c => c.Id).Select(g => g.First())
+                        .OrderBy(c => Bot.Hand.Any(x => x.Id == c.Id) ? 1 : 0)
+                        .ThenBy(c => DuoDriveSearchPriority(c.Id)).ThenBy(c => c.Id)
+                        .Take(min).ToList();
+                    if (chosen.Count == min)
                     {
-                        List<ClientCard> resultList = new List<ClientCard>();
-                        List<int> returnList = new List<int> { _CardId.MulcharmyNyalus, _CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos,
-                                CardId.SeventhTachyon
-                            };
-                        foreach (int code in returnList)
-                        {
-                            List<ClientCard> targetList = cards.Where(c => c.IsCode(code) && !resultList.Contains(c)).ToList();
-                            if (targetList.Count() > 0)
-                            {
-                                resultList.AddRange(targetList);
-                            }
-                        }
-                        // return dump card
-                        foreach (ClientCard card in cards)
-                        {
-                            if (!resultList.Contains(card) && cards.Where(c => c.IsCode(card.Id) && !resultList.Contains(c)).Count() > 1)
-                            {
-                                resultList.Add(card);
-                            }
-                        }
-                        List<int> unproperCardList = new List<int> { _CardId.EffectVeiler, _CardId.InfiniteImpermanence, _CardId.GhostOgreAndSnowRabbit, CardId.TripleTacticsTalent,
-                                CardId.NodeRyzeal, _CardId.LockBird, CardId.RyzealPlugIn, _CardId.CrossoutDesignator, _CardId.CalledByTheGrave, CardId.RyzealCross,
-                                CardId.SwordRyzeal, CardId.ExRyzeal, CardId.IceRyzeal
-                            };
-                        foreach (int code in unproperCardList)
-                        {
-                            ClientCard target = cards.FirstOrDefault(c => c.IsCode(code) && !resultList.Contains(c));
-                            if (target != null)
-                            {
-                                resultList.Add(target);
-                            }
-                        }
-                        return Util.CheckSelectCount(resultList, cards, min, max);
+                        foreach (var c in chosen)
+                            _decisionLogger.WriteSelection("DuoDriveSearch", Duel.Turn, cards.Select(x => x.Id), c.Id);
+                        return chosen;
                     }
                 }
             }
 
-            if (solvingCard == null)
+            // Lua selects one material during resolution, not at activation. Use the engine's
+            // offered candidates rather than attempting to duplicate attachfilter in C#.
+            if (current != null && current.IsCode(CardId.RyzealDetonator, CardId.RyzealDuoDrive) &&
+                hint == (long)HintMsg.XyzMaterial && min == 1 && max == 1 &&
+                cards.All(c => c.Location == CardLocation.Grave))
             {
-                ClientCard lastChainCard = Util.GetLastChainCard();
-                if (lastChainCard != null)
+                var selected = cards.OrderBy(c => IsRyzealMonster(c.Id) ? 1 : 0)
+                    .ThenBy(c => c.Id).FirstOrDefault();
+                if (selected != null)
                 {
-                    // handle for RyzealDetonator
-                    if (lastChainCard.Controller == 0 && lastChainCard.IsCode(CardId.RyzealDetonator))
-                    {
-                        if (hint == HintMsg.RemoveXyz)
-                        {
-                            if (DetonatorDestroySelf != null)
-                            {
-                                ClientCard detachTarget = cards.FirstOrDefault(c => c.IsCode(CardId.MereologicAggregator, CardId.TwinsOfTheEclipse));
-                                if (detachTarget != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { detachTarget }, cards, min, max);
-                                }
-                            }
-                            List<ClientCard> targets = cards.OrderBy(c => c.Attack).ToList();
-                            return Util.CheckSelectCount(targets, cards, min, max);
-                        } else if (hint == HintMsg.Destroy)
-                        {
-                            if (DetonatorDestroySelf != null && cards.Contains(DetonatorDestroySelf))
-                            {
-                                return Util.CheckSelectCount(new List<ClientCard> { DetonatorDestroySelf }, cards, min, max);
-                            }
-                            List<ClientCard> targetList = CanDestroyList();
-                            foreach (ClientCard target in targetList)
-                            {
-                                if (cards.Contains(target))
-                                {
-                                    currentDestroyCardList.Add(target);
-                                    return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                }
-                            }
-                        }
-                    }
+                    _decisionLogger.WriteSelection(current.Id == CardId.RyzealDetonator ? "DetonatorAttach" : "DuoDriveAttach", Duel.Turn,
+                        cards.Select(c => c.Id), selected.Id);
+                    return new List<ClientCard> { selected };
+                }
+            }
 
-                    if (hint == HintMsg.RemoveXyz && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
+            if (current == null)
+                return base.OnSelectCard(cards, min, max, hint, cancelable);
+
+            // Ryzeal 기반 카드/서치 이외에는 기본 선택 로직으로 처리
+            if (!IsRyzealCard(current.Id) &&
+                !current.IsCode(CardId.SeventhAscension, CardId.SeventhTachyon, CardId.Bonfire, CardId.MulcharmyFuwalos))
+            {
+                return base.OnSelectCard(cards, min, max, hint, cancelable);
+            }
+
+            if (current.IsCode(CardId.SeventhAscension))
+            {
+                ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.SeventhTachyon));
+                if (selected != null)
+                    return new List<ClientCard> { selected };
+            }
+
+            if (current.IsCode(CardId.SwordRyzeal) && cards.All(c => c.Location == CardLocation.Deck))
+            {
+                // Sword Ryzeal 효과로 덱에서 Ext -> Star -> Ice 우선 선택
+                bool hasExt = IsCardAnywhere(CardId.ExtRyzeal);
+                bool hasStar = IsCardAnywhere(CardId.StarRyzeal);
+                bool hasIce = IsCardAnywhere(CardId.IceRyzeal);
+
+                if (!hasExt)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.ExtRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (!hasStar)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.StarRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (!hasIce)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.IceRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                ClientCard fallback = cards.FirstOrDefault(c => c.IsCode(CardId.ExtRyzeal) || c.IsCode(CardId.IceRyzeal));
+                if (fallback != null)
+                    return new List<ClientCard> { fallback };
+            }
+
+            // Seventh Tachyon 발동 후 덱 맨 위로 넣을 카드 선택 (패에서 선택)
+            if (current.IsCode(CardId.SeventhTachyon) && cards.All(c => c.Location == CardLocation.Hand))
+            {
+                // 1. MulcharmyFuwalos 우선
+                ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.MulcharmyFuwalos));
+                if (selected != null)
+                    return new List<ClientCard> { selected };
+
+                // 2. 중복 카드 (손패에서 같은 ID의 카드가 2장 이상인 것)
+                var duplicateCards = cards.GroupBy(c => c.Id).Where(g => g.Count() > 1).SelectMany(g => g).ToList();
+                if (duplicateCards.Any())
+                {
+                    return new List<ClientCard> { duplicateCards.First() };
+                }
+
+                // 3. RyzealPlugin, RyzealCross, RyzealPlasmaHole 중 패에 있는 것 (그리고 필드/묘지/제외에 존재하는 경우)
+                var ryzealCards = new[] { CardId.RyzealPlugin, CardId.RyzealCross, CardId.RyzealPlasmaHole };
+                var availableRyzealCards = cards.Where(c => ryzealCards.Contains(c.Id)).ToList();
+                if (availableRyzealCards.Any())
+                {
+                    // 모두 패, 필드, 묘지, 제외 중 하나에 있는지 확인 (즉, 게임에 존재하는지)
+                    bool allExist = ryzealCards.All(id =>
+                        Bot.Hand.Any(c => c.Id == id) ||
+                        Bot.GetMonsters().Any(c => c.Id == id) ||
+                        Bot.GetSpells().Any(c => c.Id == id) ||
+                        Bot.Graveyard.Any(c => c.Id == id) ||
+                        Bot.Banished.Any(c => c.Id == id));
+                    if (allExist)
                     {
-                        List<int> checkRyzealIdList = new List<int> { CardId.NodeRyzeal, CardId.SwordRyzeal, CardId.ExRyzeal };
-                        foreach (int checkId in checkRyzealIdList)
-                        {
-                            if (!activatedCardIdList.Contains(checkId))
-                            {
-                                ClientCard target = cards.FirstOrDefault(c => c.IsCode(checkId));
-                                if (target != null)
-                                {
-                                    return Util.CheckSelectCount(new List<ClientCard> { target }, cards, min, max);
-                                }
-                            }
-                        }
+                        return new List<ClientCard> { availableRyzealCards.First() };
                     }
+                }
+
+                // 4. Ryzeal 카드가 아닌 카드 하나
+                var nonRyzealCards = cards.Where(c => !IsRyzealCard(c.Id)).ToList();
+                if (nonRyzealCards.Any())
+                {
+                    return new List<ClientCard> { nonRyzealCards.First() };
+                }
+
+                // 5. 랜덤
+                return new List<ClientCard> { cards.First() };
+            }
+
+            if (current.IsCode(CardId.SeventhTachyon) || current.IsCode(CardId.Bonfire))
+            {
+                // Ext/Ice/Star 모두 1장 이상 있고 Ext 2장 이상이면 추가 서치 필요 없음
+                int extCount = CountInHand(CardId.ExtRyzeal);
+                int iceCount = CountInHand(CardId.IceRyzeal);
+                int starCount = CountInHand(CardId.StarRyzeal);
+                if (extCount >= 2 && iceCount >= 1 && starCount >= 1)
+                    return base.OnSelectCard(cards, min, max, hint, cancelable);
+
+                // 우선순위: Ext Ryzeal → Ice Ryzeal → Star Ryzeal → (2장째) Ext Ryzeal → (2장째) Star Ryzeal
+                if (extCount == 0)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.ExtRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (iceCount == 0)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.IceRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (starCount == 0)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.StarRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (extCount == 1)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.ExtRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
+                }
+
+                if (starCount == 1)
+                {
+                    ClientCard selected = cards.FirstOrDefault(c => c.IsCode(CardId.StarRyzeal));
+                    if (selected != null)
+                        return new List<ClientCard> { selected };
                 }
             }
 
             return base.OnSelectCard(cards, min, max, hint, cancelable);
         }
 
-        /// <summary>
-        /// go first
-        /// </summary>
-        public override bool OnSelectHand()
+        // "가지고 있는 카드"는 손패에 있는 카드만을 의미합니다.
+        private bool HasCardInHand(int cardId)
         {
-            HashSet<int> tenpaiList = new HashSet<int> { SetcodeTenpaiDragon, SetcodeSangen };
-            bool maybeTenpai = enemyDeckTypeRecord.Count() > 0 && enemyDeckTypeRecord.All(c => tenpaiList.Contains(c));
-            return !maybeTenpai;
+            return Bot.HasInHand(cardId);
         }
 
-        public override int OnSelectOption(IList<long> options)
+        private int CountInHand(int cardId)
         {
-            bool tripleCheck = false;
-            for (int opt = 1; opt < 4; ++ opt)
-            {
-                if (options.Contains(Util.GetStringId(CardId.TripleTacticsTalent, opt)))
-                {
-                    tripleCheck = true;
-                    break;
-                }
-            }
-            if (tripleCheck)
-            {
-                return TripleTacticsTalentDecision(options);
-            }
-
-            bool no60Check = false;
-            for (int opt = 1; opt < 4; ++ opt)
-            {
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, opt)))
-                {
-                    no60Check = true;
-                    break;
-                }
-            }
-            if (no60Check)
-            {
-                // double attack
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 3)))
-                {
-                    if (Number60DugaresTheTimelessDoubleTarget() != null)
-                    {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 3));
-                        if (res >= 0)
-                        {
-                            return res;
-                        }
-                    }
-                }
-                // draw effect
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1)))
-                {
-                    if (Number60DugaresTheTimelessDrawEffect())
-                    {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 1));
-                        if (res >= 0)
-                        {
-                            return res;
-                        }
-                    }
-                }
-                // reborn
-                if (options.Contains(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2)))
-                {
-                    if (Number60DugaresTheTimelessRebornEffect())
-                    {
-                        int res = options.IndexOf(Util.GetStringId(CardId.Number60DugaresTheTimeless, 2));
-                        if (res >= 0)
-                        {
-                            return res;
-                        }
-                    }
-                }
-            }
-
-            ClientCard currentSolvingChain = Duel.GetCurrentSolvingChainCard();
-            if (currentSolvingChain != null)
-            {
-                // TODO
-            }
-
-            return base.OnSelectOption(options);
+            return Bot.Hand.Count(card => card != null && card.Id == cardId);
         }
 
-        public override int OnSelectPlace(long cardId, int player, CardLocation location, int available)
+        private bool IsRyzealCard(int cardId)
         {
-            if (player == 0 && location == CardLocation.MonsterZone)
-            {
-                List<int> zoneIdList = ShuffleList(new List<int> { 5, 6 });
-                zoneIdList.AddRange(ShuffleList(new List<int> { 0, 2, 4 }));
-                zoneIdList.AddRange(ShuffleList(new List<int> { 1, 3 }));
-                foreach (int zoneId in zoneIdList)
-                {
-                    int zone = (int)System.Math.Pow(2, zoneId);
-                    if ((available & zone) != 0 && Bot.MonsterZone[zoneId] == null)
-                    {
-                        return zone;
-                    }
-                }
-            }
-            return base.OnSelectPlace(cardId, player, location, available);
-        }
-
-        public override bool OnSelectYesNo(long desc)
-        {
-            if (desc == Util.GetStringId(CardId.RyzealPlugIn, 1))
-            {
-                Logger.DebugWriteLine("** plugin set material");
+            if (RyzealMonsters.Contains(cardId))
                 return true;
-            }
 
-            return base.OnSelectYesNo(desc);
+            // 확장/서포트 카드도 Ryzeal 범위로 간주
+            return cardId == CardId.RyzealPlugin || cardId == CardId.RyzealCross || cardId == CardId.RyzealPlasmaHole;
         }
 
-        public override CardPosition OnSelectPosition(int cardId, IList<CardPosition> positions)
+        private bool SeventhAscensionEffect()
         {
-            if (cardId == _CardId.Number41BagooskatheTerriblyTiredTapir && (Util.IsTurn1OrMain2() || Duel.Player == 1))
-            {
-                return CardPosition.FaceUpDefence;
-            }
-
-            YGOSharp.OCGWrapper.NamedCard cardData = YGOSharp.OCGWrapper.NamedCard.Get(cardId);
-            if (cardData != null)
-            {
-                if (Duel.Turn == 1 || Duel.Phase >= DuelPhase.Main2)
-                {
-                    bool turnDefense = false;
-                    if (cardData.Attack <= cardData.Defense)
-                    {
-                        turnDefense = true;
-                    }
-                    if (turnDefense)
-                    {
-                        return CardPosition.FaceUpDefence;
-                    }
-                }
-                if (Duel.Player == 1)
-                {
-                    if (cardData.Defense >= cardData.Attack || Util.IsOneEnemyBetterThanValue(cardData.Attack, true))
-                    {
-                        return CardPosition.FaceUpDefence;
-                    }
-                }
-                int cardAttack = cardData.Attack;
-                int bestBotAttack = Math.Max(Util.GetBestAttack(Bot), cardAttack);
-
-                if (Bot.HasInExtra(CardId.Number60DugaresTheTimeless) && GetLevel4FinalCountOnField(true, out _) >= 2)
-                {
-                    bestBotAttack *= 2;
-                }
-
-                if (Util.IsAllEnemyBetterThanValue(bestBotAttack, true))
-                {
-                    return CardPosition.FaceUpDefence;
-                }
-            }
-            return base.OnSelectPosition(cardId, positions);
+            // 우선적으로 꺼내야 하는 카드가 있는 경우 발동 (패에 7th Tachyon이 없을 때)
+            return !HasCardInHand(CardId.SeventhTachyon);
         }
 
-        public override void OnNewTurn()
+        private bool SeventhTachyonEffect()
         {
-            if (Duel.Turn <= 1)
-            {
-                dimensionShifterCount = 0;
-                // for doom bot
-                maxSummonCount = 1;
-                hardToDestroyCardList.Clear();
-                cannotDestroyCardList.Clear();
-            }
-
-            summonCount = maxSummonCount;
-            enemyActivateMaxxC = false;
-            enemyActivatePurulia = false;
-            enemyActivateFuwalos = false;
-            enemyActivateNyalus = false;
-            lockBirdSolved = false;
-            if (dimensionShifterCount > 0) dimensionShifterCount--;
-            enemyActivateInfiniteImpermanenceFromHand = false;
-            botActivateMulcharmy = false;
-            DetonatorDestroySelf = null;
-            botSolvingCross = false;
-            infiniteImpermanenceList.Clear();
-            currentNegateCardList.Clear();
-            currentDestroyCardList.Clear();
-            activatedCardIdList.Clear();
-            spSummonedCardIdList.Clear();
-            botSolvedCardIdList.Clear();
-            enemyPlaceThisTurn.Clear();
-            summonThisTurn.Clear();
-            currentCanActivateEffect.Clear();
-            base.OnNewTurn();
-        }
-
-        public override void OnChaining(int player, ClientCard card)
-        {
-            Duel.LastChainTargets.Clear();
-            if (card == null) return;
-            
-            if (player == 1)
-            {
-                if (card.IsCode(_CardId.InfiniteImpermanence))
-                {
-                    if (enemyActivateInfiniteImpermanenceFromHand)
-                    {
-                        enemyActivateInfiniteImpermanenceFromHand = false;
-                    }
-                    else
-                    {
-                        for (int i = 0; i < 5; ++i)
-                        {
-                            if (Enemy.SpellZone[i] == card)
-                            {
-                                infiniteImpermanenceList.Add(4 - i);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (card.HasSetcode(SetcodeFloowandereeze))
-                {
-                    enemyDeckTypeRecord.Add(SetcodeFloowandereeze);
-                }
-            }
-
-            if (player == 0)
-            {
-                if (card.IsCode(_CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, _CardId.MulcharmyNyalus))
-                {
-                    botActivateMulcharmy = true;
-                }
-            }
-            base.OnChaining(player, card);
-        }
-
-        public override void OnChainSolved(int chainIndex)
-        {
-            botSolvingCross = false;
-            ChainInfo currentChain = Duel.GetCurrentSolvingChainInfo();
-            if (currentChain != null && !Duel.IsCurrentSolvingChainNegated())
-            {
-                if (!Duel.IsCurrentSolvingChainNegated())
-                {
-                    if (currentChain.IsCode(_CardId.LockBird))
-                        lockBirdSolved = true;
-                    if (currentChain.IsCode(_CardId.DimensionShifter))
-                        dimensionShifterCount = 2;
-                    if (currentChain.ActivatePlayer == 1)
-                    {
-                        if (currentChain.IsCode(_CardId.MaxxC))
-                            enemyActivateMaxxC = true;
-                        if (currentChain.IsCode(_CardId.MulcharmyPurulia))
-                            enemyActivatePurulia = true;
-                        if (currentChain.IsCode(_CardId.MulcharmyFuwalos))
-                            enemyActivateFuwalos = true;
-                        if (currentChain.IsCode(_CardId.MulcharmyNyalus))
-                            enemyActivateNyalus = true;
-                    }
-                    if (currentChain.ActivatePlayer == 0)
-                    {
-                        foreach (int checkId in CheckBotSolvedList)
-                        {
-                            if (currentChain.IsCode(checkId))
-                            {
-                                botSolvedCardIdList.Add(checkId);
-                            }
-                        }
-                    }
-                }
-            }
-
-            base.OnChainSolved(chainIndex);
-        }
-
-        public override void OnChainEnd()
-        {
-            for (int idx = cannotDestroyCardList.Count - 1; idx >= 0; idx--)
-            {
-                ClientCard checkTarget = cannotDestroyCardList[idx];
-                if (checkTarget == null || !checkTarget.IsOnField())
-                {
-                    cannotDestroyCardList.RemoveAt(idx);
-                }
-            }
-            for (int idx = hardToDestroyCardList.Count - 1; idx >= 0; idx--)
-            {
-                ClientCard checkTarget = hardToDestroyCardList[idx];
-                if (checkTarget == null || !checkTarget.IsOnField())
-                {
-                    hardToDestroyCardList.RemoveAt(idx);
-                }
-            }
-            foreach (ClientCard card in currentDestroyCardList)
-            {
-                if (card != null && card.IsOnField())
-                {
-                    if (hardToDestroyCardList.Contains(card))
-                    {
-                        cannotDestroyCardList.Add(card);
-                    } else
-                    {
-                        hardToDestroyCardList.Add(card);
-                    }
-                }
-            }
-
-            currentNegateCardList.Clear();
-            currentDestroyCardList.Clear();
-            currentCanActivateEffect.Clear();
-            enemyActivateInfiniteImpermanenceFromHand = false;
-            botSolvingCross = false;
-            DetonatorDestroySelf = null;
-            for (int idx = enemyPlaceThisTurn.Count - 1; idx >= 0; idx--)
-            {
-                ClientCard checkTarget = enemyPlaceThisTurn[idx];
-                if (checkTarget == null || !checkTarget.IsOnField())
-                {
-                    enemyPlaceThisTurn.RemoveAt(idx);
-                }
-            }
-            base.OnChainEnd();
-        }
-
-        public override void OnMove(ClientCard card, int previousControler, int previousLocation, int currentControler, int currentLocation)
-        {
-            if (card != null)
-            {
-                if (previousControler == 1)
-                {
-                    if (card.IsCode(_CardId.InfiniteImpermanence) && previousLocation == (int)CardLocation.Hand && currentLocation == (int)CardLocation.SpellZone)
-                        enemyActivateInfiniteImpermanenceFromHand = true;
-                }
-                if (card.Owner == 1)
-                {
-                    foreach (int setcode in CheckSetcodeList)
-                    {
-                        if (card.HasSetcode(setcode))
-                        {
-                            enemyDeckTypeRecord.Add(setcode);
-                        }
-                    }
-                    if (card.IsCode(AlbazFusionList))
-                    {
-                        enemyDeckTypeRecord.Add(SetcodeBranded);
-                    }
-                }
-                if (currentControler == 1 && (currentLocation == (int)CardLocation.MonsterZone || currentLocation == (int)CardLocation.SpellZone))
-                {
-                    enemyPlaceThisTurn.Add(card);
-                }
-
-                if (previousControler == 0 && previousLocation == (int)CardLocation.MonsterZone && currentLocation != (int)CardLocation.MonsterZone && summonThisTurn.Contains(card))
-                {
-                    summonThisTurn.Remove(card);
-                }
-                if (currentControler == 0 && currentLocation == (int)CardLocation.MonsterZone)
-                {
-                    summonThisTurn.Add(card);
-                }
-            }
-
-            base.OnMove(card, previousControler, previousLocation, currentControler, currentLocation);
-        }
-
-        public override void OnSpSummoned()
-        {
-            // not special summoned by chain
-            if (Duel.GetCurrentSolvingChainCard() == null)
-            {
-                foreach (ClientCard card in Duel.LastSummonedCards)
-                {
-                    if (card.Controller == 0 && card.IsCode(CardId.IceRyzeal, CardId.SwordRyzeal, CardId.NodeRyzeal, CardId.ExRyzeal))
-                    {
-                        spSummonedCardIdList.Add(card.GetOriginCode());
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Select spell/trap's place randomly to avoid InfiniteImpermanence and so on.
-        /// </summary>
-        /// <param name="card">Card to set(default current card)</param>
-        /// <param name="avoidImpermanence">Whether need to avoid InfiniteImpermanence</param>
-        /// <param name="avoidList">Whether need to avoid set in this place</param>
-        public void SelectSTPlace(ClientCard card = null, bool avoidImpermanence = false, List<int> avoidList = null)
-        {
-            if (card == null) card = Card;
-            List<int> list = new List<int>();
-            for (int seq = 0; seq < 5; ++seq)
-            {
-                if (Bot.SpellZone[seq] == null)
-                {
-                    if (card != null && card.Location == CardLocation.Hand && avoidImpermanence && infiniteImpermanenceList.Contains(seq)) continue;
-                    if (avoidList != null && avoidList.Contains(seq)) continue;
-                    list.Add(seq);
-                }
-            }
-            int n = list.Count;
-            while (n-- > 1)
-            {
-                int index = Program.Rand.Next(list.Count);
-                int nextIndex = (index + Program.Rand.Next(list.Count - 1)) % list.Count;
-                int tempInt = list[index];
-                list[index] = list[nextIndex];
-                list[nextIndex] = tempInt;
-            }
-            if (avoidImpermanence && Bot.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled()))
-            {
-                foreach (int seq in list)
-                {
-                    ClientCard enemySpell = Enemy.SpellZone[4 - seq];
-                    if (enemySpell != null && enemySpell.IsFacedown()) continue;
-                    int zone = (int)System.Math.Pow(2, seq);
-                    AI.SelectPlace(zone);
-                    return;
-                }
-            }
-            foreach (int seq in list)
-            {
-                int zone = (int)System.Math.Pow(2, seq);
-                AI.SelectPlace(zone);
-                return;
-            }
-            AI.SelectPlace(0);
-        }
-
-        public bool IceRyzealSpSummonFirst()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= GetLevel4CountOnField() >= 2;
-                if (flag) return false;
-            }
-            List<ClientCard> costList = GetCostFromHandAndFieldFirst(Card);
-            if (costList.Count() > 0)
-            {
-                AI.SelectCard(costList);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool IceRyzealSpSummon()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= GetLevel4CountOnField() >= 2;
-                if (flag) return false;
-            }
-            if (Card.Level != 4) return false;
-            if (summonCount <= 0 && GetLevel4CountOnField() == 1)
-            {
-                List<ClientCard> firstCostList = GetCostFromHandAndField(Card, false);
-                if (firstCostList.Count() > 0)
-                {
-                    AI.SelectCard(firstCostList);
-                    return true;
-                }
-                if (Enemy.MonsterZone.Any(c => c != null && c.IsFaceup() && !c.IsDisabled() && c.IsFloodgate()) || !CheckWhetherHaveFinalMonster())
-                {
-                    List<ClientCard> costList = GetCostFromHandAndField(Card, true);
-                    if (costList.Count() > 0)
-                    {
-                        AI.SelectCard(costList);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool IceRyzealSummon()
-        {
-            if (CheckWhetherNegated(true, true)) return false;
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= GetLevel4CountOnField() >= 2;
-                if (flag) return false;
-            }
-            summonCount -= 1;
-            return true;
-        }
-
-        public bool IceRyzealActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (CheckShouldNoMoreSpSummon(CardLocation.Deck) && GetLevel4CountOnField() >= 2)
-            {
+            // Ext/Ice/Star 모두 손패에 있고 Ext가 2장 이상이면 더 이상 사용할 필요 없음
+            if (CountInHand(CardId.ExtRyzeal) >= 2 && HasCardInHand(CardId.IceRyzeal) && HasCardInHand(CardId.StarRyzeal))
                 return false;
-            }
-            activatedCardIdList.Add(Card.Id);
-            return true;
+
+            // Ext/Ice Ryzeal이 손패에 부족할 때만 발동
+            return CountInHand(CardId.ExtRyzeal) < 2 || !HasCardInHand(CardId.IceRyzeal) || !HasCardInHand(CardId.StarRyzeal);
         }
 
-        public bool SwordRyzealSpSummon()
+        private bool BonfireEffect()
         {
-            int lv4Count = GetLevel4CountOnField();
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= lv4Count >= 2;
-                flag |= lv4Count == 1 && summonCount > 0;
-                if (flag) return false;
-            }
-            bool spsummonFlag = lv4Count == 1;
-            spsummonFlag |= !CheckWhetherNegated(true, true, CardType.Monster) && CheckRemainInDeck(CardId.IceRyzeal, CardId.ExRyzeal) > 0
-                && !activatedCardIdList.Contains(CardId.SwordRyzeal) && !lockBirdSolved;
-            if (GetLevel4CountOnField() == 0)
-            {
-                spsummonFlag |= GetLevel4FinalCountOnField(true, out _) >= 2 && !CheckWhetherHaveFinalMonster();
-            }
-
-            return spsummonFlag;
-        }
-
-        public bool SwordRyzealSummon()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Extra))
-            {
-                int lv4Count = GetLevel4CountOnField();
-                if (lv4Count == 1)
-                {
-                    bool flag = !activatedCardIdList.Contains(CardId.SwordRyzeal);
-                    flag &= !(Bot.HasInHand(CardId.ExRyzeal) && !activatedCardIdList.Contains(CardId.ExRyzeal));
-                    if (flag)
-                    {
-                        summonCount -= 1;
-                        return true;
-                    }
-                }
-                bool skipFlag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                skipFlag |= lv4Count >= 2;
-                if (skipFlag) return false;
-            }
-            if (CheckWhetherNegated(true)) return false;
-
-            summonCount -= 1;
-            return true;
-        }
-
-        public bool SwordRyzealActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            activatedCardIdList.Add(Card.Id);
-            return true;
-        }
-
-        public bool NodeRyzealSpSummon()
-        {
-            int lv4Count = GetLevel4CountOnField();
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= lv4Count >= 2;
-                flag |= lv4Count == 1 && summonCount > 0;
-                if (flag) return false;
-            }
-            bool spsummonFlag = lv4Count == 1;
-            spsummonFlag |= !CheckWhetherNegated(true, true, CardType.Monster) && Bot.Graveyard.Any(c => !c.HasType(CardType.Xyz) && c.HasSetcode(SetcodeRyzeal) && c.Level == 4);
-            return spsummonFlag;
-        }
-
-        public bool NodeRyzealSpSummonFirst()
-        {
-            int lv4Count = GetLevel4CountOnField();
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Deck | CardLocation.Extra))
-            {
-                bool flag = Bot.GetMonsters().Any(c => c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag |= lv4Count >= 2;
-                flag |= lv4Count == 1 && summonCount > 0;
-                if (flag) return false;
-            }
-            if (!activatedCardIdList.Contains(Card.Id) && GetCostFromHandAndField(Card, false).Count() > 0)
-            {
-                return true;
-            }
-            return false;
-        }
-
-        public bool NodeRyzealActivate()
-        {
-            if (NodeRyzealActivateInner(true))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool NodeRyzealActivateFirst()
-        {
-            if (NodeRyzealActivateInner(false))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool NodeRyzealActivateInner(bool sendNotNessary)
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (CheckShouldNoMoreSpSummon(CardLocation.Grave | CardLocation.Extra))
-            {
-                if (Bot.GetMonsters().Count(c => c.HasType(CardType.Xyz) && c.IsFaceup()) > 0)
-                {
-                    return false;
-                }
-            }
-            List<int> fireIdList = new List<int> { CardId.NodeRyzeal, CardId.SwordRyzeal };
-            List<int> lightIdList = new List<int> { CardId.ExRyzeal, CardId.IceRyzeal };
-            List<ClientCard> rebornTarget = new List<ClientCard>();
-            foreach (int id in fireIdList)
-            {
-                ClientCard target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsCode(id));
-                if (target != null && !rebornTarget.Contains(target)) rebornTarget.Add(target);
-                if (rebornTarget.Count == 2) break;
-            }
-            foreach (int id in lightIdList)
-            {
-                ClientCard target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsCode(id));
-                if (target != null && !rebornTarget.Contains(target)) rebornTarget.Add(target);
-                if (rebornTarget.Count == 2) break;
-            }
-            if (rebornTarget.Count == 0) return false;
-
-            if (sendNotNessary)
-            {
-                ClientCard twinsOnField = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsCode(CardId.TwinsOfTheEclipse));
-                
-                // Check if we'd have enough XYZ summons available if we send Twins
-                int currentLevel4 = GetLevel4FinalCountOnField(true, out _);
-                int xyzCount = Bot.MonsterZone.Count(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz) && c.Rank == 4);
-                
-                if ((twinsOnField != null) && currentLevel4 >= 2 && xyzCount < 3)
-                {
-                    List<ClientCard> reborn = new List<ClientCard> { twinsOnField };
-                    
-                    List<ClientCard> costList = GetCostFromHandAndField(Card, true);
-                    if (costList.Count() > 0)
-                    {
-                        AI.SelectCard(costList);
-                        AI.SelectNextCard(reborn);
-                        activatedCardIdList.Add(Card.Id);
-                        return true;
-                    }
-                }
-            }            
-
-            List<ClientCard> firstCostList = GetCostFromHandAndField(Card, false);
-            if (firstCostList.Count() > 0)
-            {
-                AI.SelectCard(firstCostList);
-                AI.SelectNextCard(rebornTarget);
-                activatedCardIdList.Add(Card.Id);
-                return true;
-            }
-
-            if (GetLevel4CountOnField() == 1 && sendNotNessary)
-            {
-                List<ClientCard> nextCostList = GetCostFromHandAndField(Card, true);
-                if (nextCostList.Count() > 0)
-                {
-                    AI.SelectCard(nextCostList);
-                    AI.SelectNextCard(rebornTarget);
-                    activatedCardIdList.Add(Card.Id);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public bool ExRyzealSpSummon()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Extra))
-            {
-                bool checkFlag = !CheckWhetherHaveFinalMonster() && GetLevel4CountOnField() == 1;
-                if (checkFlag && ExRyzealDiscardExtra())
-                {
-                    return true;
-                }
+            // Ext/Ice/Star 모두 손패에 있고 Ext가 2장 이상이면 더 이상 사용할 필요 없음
+            if (CountInHand(CardId.ExtRyzeal) >= 2 && HasCardInHand(CardId.IceRyzeal) && HasCardInHand(CardId.StarRyzeal))
                 return false;
-            }
-            if (Duel.Turn == 1)
-            {
-                bool checkFlag = !activatedCardIdList.Contains(CardId.ExRyzeal) && !lockBirdSolved && !DefaultCheckWhetherCardIdIsNegated(CardId.ExRyzeal) && !Bot.HasInMonstersZone(_CardId.Number41BagooskatheTerriblyTiredTapir);
-                checkFlag |= !Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz)) && GetLevel4CountOnField() == 1;
-                if (checkFlag)
-                {
-                    // discard ryzeal
-                    AI.SelectCard(CardId.RyzealDetonator, CardId.RyzealDuodrive);
-                    return true;
-                }
-            }
-            if (ExRyzealDiscardExtra())
-            {
-                return true;
-            }
 
-            return false;
+            // Ext/Ice/Star가 손패에 부족할 때 발동
+            return CountInHand(CardId.ExtRyzeal) < 2 || !HasCardInHand(CardId.IceRyzeal) || !HasCardInHand(CardId.StarRyzeal);
         }
 
-        public bool ExRyzealDiscardExtra()
+        private bool IsCardAnywhere(int cardId)
         {
-            List<int> discardIdCheckList = new List<int> { CardId.MereologicAggregator, CardId.TwinsOfTheEclipse, CardId.Number104Masquerade, CardId.StarliegePhotonBlastDragon,
-                CardId.TornadoDragon, CardId.AbyssDweller, _CardId.EvilswarmExcitonKnight, CardId.FullArmoredUtopicRayLancer, CardId.Number60DugaresTheTimeless,
-                CardId.RyzealDuodrive, CardId.RyzealDetonator};
-
-            // delay id
-            List<int> discardIdList = new List<int>();
-            foreach (int discardId in discardIdCheckList)
-            {
-                if (discardId == CardId.MereologicAggregator)
-                {
-                    if (!Enemy.MonsterZone.Any(c => c != null && c.IsFaceup() && !c.IsDisabled() && !c.IsShouldNotBeMonsterTarget())
-                        && Enemy.SpellZone.Any(c => c != null && c.IsFaceup() && !c.IsDisabled() && !c.IsShouldNotBeMonsterTarget()))
-                    {
-                        continue;
-                    }
-                }
-                if (discardId == CardId.TwinsOfTheEclipse)
-                {
-                    if (Bot.Graveyard.Count(c => c.HasType(CardType.Xyz)) < 2 || !Bot.Graveyard.Any(c => c.HasType(CardType.Xyz) && c.IsCanRevive()))
-                    {
-                        continue;
-                    }
-                }
-                if (discardId == CardId.Number104Masquerade)
-                {
-                    if (CheckRemainInDeck(CardId.SeventhTachyon) > 0 || Bot.HasInHandOrInSpellZone(CardId.Number104Masquerade))
-                    {
-                        continue;
-                    }
-                }
-                if (discardId == CardId.TornadoDragon)
-                {
-                    if (Enemy.GetSpellCount() > 0)
-                    {
-                        continue;
-                    }
-                }
-                discardIdList.Add(discardId);
-            }
-            discardIdList.AddRange(discardIdCheckList);
-
-            foreach (int id in discardIdList)
-            {
-                if (Bot.HasInExtra(id))
-                {
-                    AI.SelectCard(id);
-                    return true;
-                }
-            }
-
-            return false;
+            return Bot.HasInHandOrHasInMonstersZone(cardId)
+                || Bot.HasInGraveyard(cardId)
+                || Bot.HasInSpellZone(cardId)
+                || Bot.HasInBanished(cardId);
         }
 
-        public bool ExRyzealSpSummonLater()
+        private bool CanSummonIceRyzeal()
         {
-            // TODO
-            return false;
+            return !NormalSummonUsed && Bot.HasInHand(CardId.IceRyzeal);
         }
 
-        public bool ExRyzealSummon()
+        private bool CommitSummonIceRyzeal()
         {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Extra))
-            {
-                if (GetLevel4CountOnField() == 1)
-                {
-                    bool flag = !activatedCardIdList.Contains(CardId.ExRyzeal);
-                    flag &= !(Bot.HasInHand(CardId.SwordRyzeal) && !activatedCardIdList.Contains(CardId.SwordRyzeal));
-                    if (flag)
-                    {
-                        summonCount -= 1;
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public bool ExRyzealActivate()
-        {
-            if (CheckWhetherNegated(true))
-            {
-                // use mero to negate No.41?
-                int count41 = Enemy.GetMonsters().Count(c => c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir) && c.IsFaceup()
-                    && !c.IsDisabled() && c.HasPosition(CardPosition.FaceUpDefence));
-                bool canNegate41 = count41 == 1 && currentCanActivateEffect.Any(c => c != null && c.IsCode(CardId.MereologicAggregator));
-
-                if (canNegate41)
-                {
-                    activatedCardIdList.Add(Card.Id);
-                    return true;
-                } else
-                {
-                    return false;
-                }
-            }
-            activatedCardIdList.Add(Card.Id);
+            NormalSummonUsed = true;
+            _iceNormalSummonedThisTurn = true;
             return true;
         }
 
-        public bool MulcharmyFuwalosActivate()
+        private bool IceRyzealSummon()
         {
-            if (CheckWhetherNegated(true) || Duel.Player == 0) return false;
-            if (lockBirdSolved || Duel.CurrentChain.Any(c => c.IsCode(_CardId.LockBird))) return false;
-            if (Duel.Phase > DuelPhase.Main1) return false;
-
-            botActivateMulcharmy = true;
-            return true;
+            if (!CanSummonIceRyzeal()) return false;
+            return CommitSummonIceRyzeal();
         }
 
-        public bool MulcharmyPuruliaActivate()
+        // Ryzeal 몬스터들 중 "아직 어디에도 없는" 카드를 우선으로, 덱에 남아있는 걸 고르는 공용 로직.
+        // (Ice의 덱 특수소환 효과, Node의 묘지 소생 효과 등 여러 곳에서 재사용)
+        private int GetRyzealDeckTarget(int excludeCardId)
         {
-            if (CheckWhetherNegated(true) || Duel.Player == 0) return false;
-            if (lockBirdSolved || Duel.CurrentChain.Any(c => c.IsCode(_CardId.LockBird))) return false;
-            if (Duel.Phase > DuelPhase.Main1) return false;
-            if (botActivateMulcharmy) return false;
-
-            botActivateMulcharmy = true;
-            return true;
-        }
-
-        public bool MulcharmyNyalusActivate()
-        {
-            if (CheckWhetherNegated(true) || Duel.Player == 0) return false;
-            if (lockBirdSolved || Duel.CurrentChain.Any(c => c.IsCode(_CardId.LockBird))) return false;
-            if (Duel.Phase > DuelPhase.Main1) return false;
-            if (botActivateMulcharmy) return false;
-
-            botActivateMulcharmy = true;
-            return true;
-        }
-
-        public bool AshBlossomActivate()
-        {
-            if (CheckWhetherNegated(true) || !CheckLastChainShouldNegated()) return false;
-            if (DefaultAshBlossomAndJoyousSpring())
+            int[] candidates = { CardId.StarRyzeal, CardId.IceRyzeal, CardId.SwordRyzeal, CardId.NodeRyzeal, CardId.ExtRyzeal };
+            foreach (var id in candidates)
             {
-                ClientCard lastChainCard = Util.GetLastChainCard();
-                if (lastChainCard.Location == CardLocation.MonsterZone || lastChainCard.Location == CardLocation.SpellZone) currentNegateCardList.Add(Util.GetLastChainCard());
-                return true;
+                if (id == excludeCardId) continue;
+                if (!IsCardAnywhere(id) && Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
             }
-            return false;
-        }
-
-        public bool GhostOgreAndSnowRabbitActivate()
-        {
-            if (CheckWhetherNegated(true) || Duel.LastChainPlayer == 0) return false;
-            ClientCard lastChainCard = Util.GetLastChainCard();
-            if (lastChainCard == null || lastChainCard.IsDisabled()) return false;
-            if (lastChainCard.IsMonster() && !lastChainCard.HasType(CardType.Link | CardType.Fusion | CardType.Synchro | CardType.Xyz)) return false;
-            return true;
-        }
-
-        public bool MaxxCActivate()
-        {
-            if (CheckWhetherNegated(true) || Duel.LastChainPlayer == 0 || lockBirdSolved) return false;
-            return DefaultMaxxC();
-        }
-
-        public bool LockBirdActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (Duel.Player == 0) return false;
-            List<int> mulcharmyCheckIdList = new List<int> { _CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos };
-            if (mulcharmyCheckIdList.Intersect(botSolvedCardIdList).Any())
+            foreach (var id in candidates)
             {
-                int enemyFieldCount = Enemy.GetMonsterCount() + Enemy.GetSpellCount();
-                if (enemyFieldCount + 6 < Bot.Hand.Count()) return false;
-            }
-            if (botSolvedCardIdList.Contains(_CardId.MaxxC))
-            {
-                if (!activatedCardIdList.Contains(_CardId.AshBlossom) || !activatedCardIdList.Contains(_CardId.EffectVeiler)) return false;
-            }
-            return true;
-        }
-
-        public bool EffectVeilerActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            // negate monster
-            List<ClientCard> shouldNegateList = GetMonsterListForTargetNegate(true, CardType.Monster);
-            if (shouldNegateList.Count > 0)
-            {
-                ClientCard negateTarget = shouldNegateList[0];
-                currentNegateCardList.Add(negateTarget);
-                AI.SelectCard(negateTarget);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool SeventhTachyonActivate()
-        {
-            if (CheckWhetherNegated(true, true, CardType.Spell)) return false;
-            bool flag = !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !Bot.HasInHand(CardId.ExRyzeal);
-            flag &= !(!activatedCardIdList.Contains(CardId.IceRyzeal) && summonCount > 0 && Bot.HasInHand(CardId.IceRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.IceRyzeal));
-            if (flag)
-            {
-                SelectSTPlace(Card, true);
-                return true;
-            }
-            return false;
-        }
-
-        public bool TripleTacticsTalentActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (TripleTacticsTalentDecision(null) == -1) return false;
-            SelectSTPlace(Card, true);
-            return true;
-        }
-
-        public int TripleTacticsTalentDecision(IList<long> options)
-        {
-            // gain control?
-            bool dangerFlag = Enemy.GetMonsters().Any(c => c.IsFaceup() && !c.IsDisabled() && (c.IsFloodgate()
-            || c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir) && c.HasPosition(CardPosition.FaceUpDefence)));
-            if (dangerFlag)
-            {
-                if (options == null) return 1;
-                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 2));
-                if (res >= 0) return res;
-            }
-            // draw?
-            if (!lockBirdSolved)
-            {
-                bool checkFlag = CheckCanContinueSummon();
-                if (!checkFlag)
-                {
-                    if (options == null) return 1;
-                    int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 1));
-                    if (res >= 0) return res;
-                }
-            }
-            // shuffle hand
-            if (Enemy.Hand.Count() > 0)
-            {
-                if (options == null) return 1;
-                int res = options.IndexOf(Util.GetStringId(CardId.TripleTacticsTalent, 3));
-                if (res >= 0) return res;
+                if (id == excludeCardId) continue;
+                if (Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
             }
             return -1;
         }
 
-        public bool PotOfDesiresActivate()
+        // *** c8633261.lua 확인 결과 전면 재작성 ***
+        // 실제 효과: "일반소환 성공시"에만 발동(EVENT_SUMMON_SUCCESS - 특수소환으론 안 터짐),
+        // 손으로 서치가 아니라 덱의 다른 Ryzeal 몬스터를 필드로 직접 특수소환(CATEGORY_SPECIAL_SUMMON).
+        // 대상은 "Sword 고정"이 아니라 자신을 제외한 아무 Ryzeal 몬스터.
+        private bool CanActivateIceRyzealEffect()
         {
-            if (CheckWhetherNegated(true)) return false;
-            if (Bot.Deck.Count >= 15)
-            {
-                SelectSTPlace(Card, true);
-                return true;
-            }
-            return false;
-        }
-
-        public bool PotOfDesireActivateForContinue()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (Bot.Deck.Count >= 15 && !CheckCanContinueSummon() && CheckRemainInDeck(CardId.IceRyzeal, CardId.SwordRyzeal, CardId.ExRyzeal) > 0)
-            {
-                SelectSTPlace(Card, true);
-                return true;
-            }
-            return false;
-        }
-
-        public bool BonfireActivateToSearchNecessary()
-        {
-            if (CheckWhetherNegated(true, true, CardType.Spell)) return false;
-            bool flag = !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !Bot.HasInHand(CardId.ExRyzeal);
-            flag |= !activatedCardIdList.Contains(CardId.IceRyzeal) && summonCount > 0 && !Bot.HasInHand(CardId.IceRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.IceRyzeal);
-            if (flag)
-            {
-                SelectSTPlace(Card, true);
-                return true;
-            }
-            return false;
-        }
-
-        public bool BonfireActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            // activate before no60
-            if (!activatedCardIdList.Contains(CardId.Number60DugaresTheTimeless))
-            {
-                ClientCard no60 = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.Number60DugaresTheTimeless) && !c.IsDisabled());
-                if (no60 != null && no60.Overlays.Count() >= 2)
-                {
-                    SelectSTPlace(Card, true);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool CalledbytheGraveActivate()
-        {
-            if (CheckWhetherNegated() || !CheckLastChainShouldNegated()) return false;
-            ClientCard lastChainCard = Util.GetLastChainCard();
-            if (Duel.LastChainPlayer == 1)
-            {
-                // negate
-                if (lastChainCard != null && lastChainCard.IsMonster())
-                {
-                    int code = Util.GetLastChainCard().GetOriginCode();
-                    if (code == 0) return false;
-                    if (DefaultCheckWhetherCardIdIsNegated(code)) return false;
-
-                    // not to negate same card in hand
-                    List<int> mulcharmyIdList = new List<int> { _CardId.MulcharmyPurulia, _CardId.MulcharmyFuwalos, _CardId.MulcharmyNyalus };
-                    if (Duel.Player == 0 && Bot.HasInHand(code) && !mulcharmyIdList.Contains(code)) return false;
-
-                    ClientCard graveTarget = Enemy.Graveyard.GetFirstMatchingCard(card => card.IsMonster() && card.GetOriginCode() == code);
-                    if (graveTarget != null)
-                    {
-                        if (!(Card.Location == CardLocation.SpellZone))
-                        {
-                            SelectSTPlace(null, true);
-                        }
-                        AI.SelectCard(graveTarget);
-                        currentDestroyCardList.Add(graveTarget);
-                        currentNegateCardList.AddRange(Enemy.MonsterZone.Where(c => c != null && c.IsFaceup() && c.IsCode(code)));
-                        return true;
-                    }
-                }
-
-                // banish target
-                foreach (ClientCard graveCard in Enemy.Graveyard)
-                {
-                    if (Duel.ChainTargets.Contains(graveCard) && graveCard.IsMonster())
-                    {
-                        if (!(Card.Location == CardLocation.SpellZone))
-                        {
-                            SelectSTPlace(null, true);
-                        }
-                        int code = graveCard.Id;
-                        AI.SelectCard(graveCard);
-                        currentDestroyCardList.Add(graveCard);
-                        return true;
-                    }
-                }
-
-                // become targets
-                if (Duel.ChainTargets.Contains(Card))
-                {
-                    List<ClientCard> enemyMonsters = Enemy.Graveyard.GetMatchingCards(card => card.IsMonster()).ToList();
-                    if (enemyMonsters.Count > 0)
-                    {
-                        enemyMonsters.Sort(CardContainer.CompareCardAttack);
-                        enemyMonsters.Reverse();
-                        int code = enemyMonsters[0].Id;
-                        AI.SelectCard(code);
-                        currentDestroyCardList.Add(enemyMonsters[0]);
-                        return true;
-                    }
-                }
-            }
-
-            // avoid danger monster in grave
-            if (Duel.LastChainPlayer == 1) return false;
-            List<ClientCard> targets = GetDangerousCardinEnemyGrave(true);
-            if (targets.Count > 0)
-            {
-                int code = targets[0].Id;
-                if (!(Card.Location == CardLocation.SpellZone))
-                {
-                    SelectSTPlace(null, true);
-                }
-                AI.SelectCard(code);
-                currentDestroyCardList.Add(targets[0]);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool RyzealPlugInActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-
-            // spsummon lv4
-            if (Duel.Player == 0 && CurrentTiming == -1)
-            {
-                bool summonFlag = GetLevel4CountOnField() == 1;
-                if (GetLevel4CountOnField() == 0)
-                {
-                    summonFlag |= GetLevel4FinalCountOnField(true, out _) >= 2 && !CheckWhetherHaveFinalMonster();
-                }
-
-                // summon extra level4 monster to xyz summon
-                if (summonFlag)
-                {
-                    List<int> checkIdList = new List<int> { CardId.NodeRyzeal, CardId.ExRyzeal, CardId.SwordRyzeal, CardId.IceRyzeal };
-                    foreach (int id in checkIdList)
-                    {
-                        if (activatedCardIdList.Contains(id)) continue;
-                        ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        if (target == null)
-                        {
-                            target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        }
-                        if (target != null)
-                        {
-                            AI.SelectCard(target);
-                            SelectSTPlace(Card, true);
-                            return true;
-                        }
-                    }
-
-                    foreach (int id in checkIdList)
-                    {
-                        ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        if (target == null)
-                        {
-                            target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        }
-                        if (target != null)
-                        {
-                            AI.SelectCard(target);
-                            SelectSTPlace(Card, true);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            // spsummon Detonator
-            if (!Bot.HasInMonstersZone(CardId.RyzealDetonator, true, true, true) && !Duel.CurrentChain.Any(c => c.IsCode(CardId.TwinsOfTheEclipse))
-                && !DefaultCheckWhetherCardIdIsNegated(CardId.RyzealDetonator) && !Util.ChainContainPlayer(0))
-            {
-                ClientCard Detonator = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.RyzealDetonator) && c.IsCanRevive());
-                if (Detonator == null)
-                {
-                    Detonator = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.RyzealDetonator) && c.IsCanRevive());
-                }
-                if (Detonator != null)
-                {
-                    AI.SelectCard(Detonator);
-                    SelectSTPlace(Card, true);
-                    return true;
-                }
-            }
-
-            // chain to negate monster effect
-            if (Bot.HasInSpellZone(CardId.RyzealCross, true, true) && !activatedCardIdList.Contains(CardId.RyzealCross + 2)
-                && CheckRemainInDeck(CardId.ExRyzeal, CardId.IceRyzeal, CardId.NodeRyzeal, CardId.SwordRyzeal) > 0)
-            {
-                ClientCard lastChainCard = Util.GetLastChainCard();
-                if (lastChainCard != null && lastChainCard.IsMonster() && lastChainCard.Controller == 1 && CheckCardShouldNegate(lastChainCard))
-                {
-                    bool activateFlag = false;
-                    bool shouldRebornXyz = false;
-                    bool duodriverActivating = Duel.CurrentChain.Any(c => c.IsCode(CardId.RyzealDuodrive) && c.Controller == 0) && activatedCardIdList.Contains(CardId.RyzealDuodrive + 1);
-                    if (duodriverActivating)
-                    {
-                        // check whether have 3+ material
-                        activateFlag = Bot.MonsterZone.Where(c => c != null && c.HasType(CardType.Xyz)).Sum(c => c.Overlays.Count()) >= 3;
-                    } else
-                    {
-                        if (!Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && c.Overlays.Count() > 0))
-                        {
-                            activateFlag |= Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz) && c.HasSetcode(SetcodeRyzeal));
-                            if (!activateFlag)
-                            {
-                                bool hasXyzTarget = Bot.Banished.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && c.IsCanRevive() && c.HasType(CardType.Xyz));
-                                hasXyzTarget |= Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && c.IsCanRevive() && c.HasType(CardType.Xyz));
-                                if (hasXyzTarget)
-                                {
-                                    activateFlag = true;
-                                    shouldRebornXyz = true;
-                                }
-                            }
-                        }
-                    }
-
-                    if (activateFlag)
-                    {
-                        ClientCard Detonator = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-                        if (Detonator == null)
-                        {
-                            Detonator = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-                        }
-                        if (Detonator != null)
-                        {
-                            AI.SelectCard(Detonator);
-                            SelectSTPlace(Card, true);
-                            return true;
-                        }
-
-                        if (shouldRebornXyz)
-                        {
-                            ClientCard duoDriver = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDuodrive));
-                            if (duoDriver == null)
-                            {
-                                duoDriver = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDuodrive));
-                            }
-                            if (duoDriver != null)
-                            {
-                                AI.SelectCard(duoDriver);
-                                SelectSTPlace(Card, true);
-                                return true;
-                            }
-                        } else
-                        {
-                            List<int> checkIdList = new List<int> { CardId.NodeRyzeal, CardId.ExRyzeal, CardId.SwordRyzeal, CardId.IceRyzeal };
-                            foreach (int id in checkIdList)
-                            {
-                                if (activatedCardIdList.Contains(id)) continue;
-                                ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                                if (target == null)
-                                {
-                                    target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                                }
-                                if (target != null)
-                                {
-                                    AI.SelectCard(target);
-                                    SelectSTPlace(Card, true);
-                                    return true;
-                                }
-                            }
-                            foreach (int id in checkIdList)
-                            {
-                                ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                                if (target == null)
-                                {
-                                    target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                                }
-                                if (target != null)
-                                {
-                                    AI.SelectCard(target);
-                                    SelectSTPlace(Card, true);
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            bool becomeTargetFlag = DefaultOnBecomeTarget() && Card.Location == CardLocation.SpellZone;
-            bool endPhaseFlag = Duel.Player == 1 && Duel.Phase == DuelPhase.End;
-            if (becomeTargetFlag || endPhaseFlag)
-            {
-                if (!(Duel.CurrentChain.Any(c => c != null && c.Controller == 1 && c.IsCode(_CardId.EvenlyMatched)) && DetonatorDestroySelf != null))
-                {
-                    ClientCard Detonator = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-                    if (Detonator == null)
-                    {
-                        Detonator = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDetonator));
-                    }
-                    if (Detonator != null)
-                    {
-                        AI.SelectCard(Detonator);
-                        SelectSTPlace(Card, true);
-                        return true;
-                    }
-
-                    ClientCard duoDriver = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDuodrive));
-                    if (duoDriver == null)
-                    {
-                        duoDriver = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCanRevive() && c.IsCode(CardId.RyzealDuodrive));
-                    }
-                    if (duoDriver != null)
-                    {
-                        AI.SelectCard(duoDriver);
-                        SelectSTPlace(Card, true);
-                        return true;
-                    }
-
-                    List<int> checkIdList = new List<int> { CardId.NodeRyzeal, CardId.ExRyzeal, CardId.SwordRyzeal, CardId.IceRyzeal };
-                    foreach (int id in checkIdList)
-                    {
-                        if (activatedCardIdList.Contains(id)) continue;
-                        ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        if (target == null)
-                        {
-                            target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                        }
-                        if (target != null)
-                        {
-                            AI.SelectCard(target);
-                            SelectSTPlace(Card, true);
-                            return true;
-                        }
-                    }
-
-                    if (!endPhaseFlag)
-                    {
-                        foreach (int id in checkIdList)
-                        {
-                            ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                            if (target == null)
-                            {
-                                target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(id));
-                            }
-                            if (target != null)
-                            {
-                                AI.SelectCard(target);
-                                SelectSTPlace(Card, true);
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool RyzealPlugInActivateFirst()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (Duel.Player == 0 && CurrentTiming == -1 && !activatedCardIdList.Contains(CardId.NodeRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.NodeRyzeal))
-            {
-                List<ClientCard> nodeCostList = GetCostFromHandAndField(Card, false);
-                if (nodeCostList.Count() > 0)
-                {
-                    ClientCard target = Bot.Banished.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.NodeRyzeal));
-                    if (target == null)
-                    {
-                        target = Bot.Graveyard.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.NodeRyzeal));
-                    }
-                    if (target != null)
-                    {
-                        AI.SelectCard(target);
-                        SelectSTPlace(Card, true);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool RyzealCrossActivateCard()
-        {
-            // Activate Cross at first legal opportunity from hand or when set face-down.
-            if (Card.Location == CardLocation.Hand || (Card.Location == CardLocation.SpellZone && Card.IsFacedown()))
-            {
-                return true;
-            }
-
-            // whether to negate by cross
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
-            {
-                ChainInfo currentChainInfo = Duel.GetCurrentSolvingChainInfo();
-                if (currentChainInfo != null && !Duel.IsCurrentSolvingChainNegated())
-                {
-                    if (CheckCardShouldNegate(currentChainInfo))
-                    {
-                        Logger.DebugWriteLine("** cross negate");
-                        activatedCardIdList.Add(CardId.RyzealCross + 2);
-                        botSolvingCross = true;
-                        return true;
-                    }
-                }
-                return false;
-            }
-
-            if (CheckWhetherNegated(true)) return false;
-            if (Card.Location == CardLocation.SpellZone && Card.IsFaceup()) return false;
-            bool flag = RyzealCrossActivateRecycleFirst();
-            bool canSetMaterial = Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn) && CheckRemainInDeck(CardId.IceRyzeal, CardId.ExRyzeal, CardId.NodeRyzeal, CardId.SwordRyzeal) > 0
-                && (Bot.Graveyard.Any(c => c != null && c.HasSetcode(SetcodeRyzeal) && (c.IsCanRevive() || !c.HasType(CardType.Xyz))) ||
-                    Bot.Banished.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && (c.IsCanRevive() || !c.HasType(CardType.Xyz))));
-            flag |= Bot.MonsterZone.Count(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz) && c.HasSetcode(SetcodeRyzeal) && (c.Overlays.Count() > 0 || canSetMaterial)) > 0;
-
-            if (Duel.MainPhase.SpecialSummonableCards.Any(c => c.IsCode(CardId.RyzealDuodrive)))
-            {
-                flag |= RyzealDuodriveSpSummonCheck();
-            }
-
-            return flag;
-        }
-
-        public bool RyzealCrossActivateRecycleFirst()
-        {
-            if (CheckWhetherNegated(true) || !(Card.Location == CardLocation.SpellZone && Card.IsFaceup())) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
-            {
-                return false;
-            }
-            List<int> checkIdList = new List<int> { CardId.RyzealPlugIn, CardId.RyzealDuodrive, CardId.RyzealDetonator, CardId.NodeRyzeal, CardId.ExRyzeal, CardId.IceRyzeal, CardId.SwordRyzeal };
-            List<ClientCard> targetList = new List<ClientCard>();
-            foreach (int id in checkIdList)
-            {
-                ClientCard target = Bot.Graveyard.FirstOrDefault(c => c.IsCode(id));
-                if (target != null && (CheckRemainInDeck(id) + Bot.ExtraDeck.Count(c => c.IsCode(id)) + Bot.Hand.Count(c => c.IsCode(id))) == 0)
-                {
-                    if (target.HasType(CardType.Xyz) && GetLevel4CountOnField() == 1) continue;
-                    targetList.Add(target);
-                }
-
-                if (targetList.Count() >= 2)
-                {
-                    AI.SelectCard(targetList);
-                    activatedCardIdList.Add(Card.Id + 1);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool RyzealCrossActivateRecycleLater()
-        {
-            if (CheckWhetherNegated(true) || !(Card.Location == CardLocation.SpellZone && Card.IsFaceup())) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealCross, 0))
-            {
-                return false;
-            }
-            SortedDictionary<int, List<int>> countDict = new SortedDictionary<int, List<int>>();
-            List<int> checkIdList = new List<int> { CardId.RyzealPlugIn, CardId.RyzealDuodrive, CardId.RyzealDetonator, CardId.NodeRyzeal, CardId.ExRyzeal, CardId.IceRyzeal, CardId.SwordRyzeal };
-            foreach (int id in checkIdList)
-            {
-                int remainCount = CheckRemainInDeck(id) + Bot.ExtraDeck.Count(c => c.IsCode(id));
-                if (!countDict.ContainsKey(remainCount))
-                {
-                    countDict.Add(remainCount, new List<int>());
-                }
-                countDict[remainCount].Add(id);
-            }
-
-            List<ClientCard> targetList = new List<ClientCard>();
-            foreach (KeyValuePair<int, List<int>> pair in countDict)
-            {
-                foreach (int id in pair.Value)
-                {
-                    ClientCard target = Bot.Graveyard.FirstOrDefault(c => c.IsCode(id));
-                    if (target != null) targetList.Add(target);
-                }
-            }
-
-            if (targetList.Count() >= 2)
-            {
-                AI.SelectCard(targetList);
-                activatedCardIdList.Add(Card.Id + 1);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool CrossoutDesignatorActivate()
-        {
-            if (CheckWhetherNegated() || !CheckLastChainShouldNegated()) return false;
-            // negate 
-            if (Duel.LastChainPlayer == 1 && Util.GetLastChainCard() != null)
-            {
-                int code = Util.GetLastChainCard().Id;
-                int alias = Util.GetLastChainCard().Alias;
-                if (alias != 0 && alias - code < 10) code = alias;
-                if (code == 0) return false;
-                if (DefaultCheckWhetherCardIdIsNegated(code)) return false;
-                if (CheckRemainInDeck(code) > 0)
-                {
-                    if (!(Card.Location == CardLocation.SpellZone))
-                    {
-                        SelectSTPlace(null, true);
-                    }
-                    AI.SelectAnnounceID(code);
-                    currentNegateCardList.AddRange(Enemy.MonsterZone.Where(c => c != null && c.IsFaceup() && c.IsCode(code)));
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        public bool InfiniteImpermanenceActivate()
-        {
-            if (CheckWhetherNegated()) return false;
-
-            ClientCard LastChainCard = Util.GetLastChainCard();
-
-            // negate spells
-            if (Card.Location == CardLocation.SpellZone)
-            {
-                int this_seq = -1;
-                int that_seq = -1;
-                for (int i = 0; i < 5; ++i)
-                {
-                    if (Bot.SpellZone[i] == Card) this_seq = i;
-                    if (LastChainCard != null
-                        && LastChainCard.Controller == 1 && LastChainCard.Location == CardLocation.SpellZone && Enemy.SpellZone[i] == LastChainCard) that_seq = i;
-                    else if (Duel.Player == 0 && Util.GetProblematicEnemySpell() != null
-                        && Enemy.SpellZone[i] != null && Enemy.SpellZone[i].IsFloodgate()) that_seq = i;
-                }
-                if ((this_seq * that_seq >= 0 && this_seq + that_seq == 4)
-                    || Util.IsChainTarget(Card)
-                    || (LastChainCard != null && LastChainCard.Controller == 1 && LastChainCard.IsCode(_CardId.HarpiesFeatherDuster)))
-                {
-                    ClientCard target = GetProblematicEnemyMonster(canBeTarget: true);
-                    if (target != null)
-                    {
-                        AI.SelectCard(target);
-                    }
-                    else
-                    {
-                        AI.SelectCard(Enemy.GetMonsters());
-                    }
-                    infiniteImpermanenceList.Add(this_seq);
-                    return true;
-                }
-            }
-
-            // negate monster
-            List<ClientCard> shouldNegateList = GetMonsterListForTargetNegate(true, CardType.Trap);
-            if (shouldNegateList.Count > 0)
-            {
-                ClientCard negateTarget = shouldNegateList[0];
-                currentNegateCardList.Add(negateTarget);
-
-                if (Card.Location == CardLocation.SpellZone)
-                {
-                    for (int i = 0; i < 5; ++i)
-                    {
-                        if (Bot.SpellZone[i] == Card)
-                        {
-                            infiniteImpermanenceList.Add(i);
-                            break;
-                        }
-                    }
-                }
-                if (Card.Location == CardLocation.Hand)
-                {
-                    SelectSTPlace(Card, true);
-                }
-                AI.SelectCard(negateTarget);
-                return true;
-            }
-
-            return false;
-        }
-
-        // TODO extra summon
-
-        public bool AbyssDwellerSummonCheck()
-        {
-            bool flag = enemyDeckTypeRecord.Contains(SetcodeAtlantean);
-            flag |= enemyDeckTypeRecord.Contains(SetcodeOrcust);
-            flag |= enemyDeckTypeRecord.Contains(SetcodePhantomKnight);
-            flag |= enemyDeckTypeRecord.Count() > 0 && enemyDeckTypeRecord.All(c => c == SetcodeTearlaments);
-
-            int enemyDeckTotalCount = Enemy.Hand.Count() + Enemy.Deck.Count() + Enemy.Graveyard.Count() + Enemy.Banished.Count() + Enemy.ExtraDeck.Count();
-            if (enemyDeckTotalCount > 65)
-            {
-                flag |= !enemyDeckTypeRecord.Contains(SetcodeInfernoid);
-            }
-
-            return flag;
-        }
-
-        public bool Number41BagooskatheTerriblyTiredTapirSummonCheck()
-        {
-            bool flag = enemyDeckTypeRecord.Contains(SetcodeFloowandereeze);
-            flag |= enemyDeckTypeRecord.Contains(SetcodeBranded);
-            flag |= enemyDeckTypeRecord.Contains(SetcodeRyzeal);
-            flag &= Util.IsTurn1OrMain2();
-
-            return flag;
-        }
-
-        public bool TornadoDragonSummonCheck()
-        {
-            if (CheckWhetherNegated(true, true, CardType.Monster)) return false;
-            bool flag = enemyDeckTypeRecord.Contains(SetcodeLabrynth);
-            flag |= Enemy.SpellZone.Any(c => c != null && c.IsFaceup() && !c.IsDisabled() && c.IsFloodgate());
-            flag |= Enemy.SpellZone.Count(c => c != null && !c.IsShouldNotBeMonsterTarget() && !NotToDestroySpellTrap.Contains(c.Id)) >= 3;
-            flag |= !Util.IsTurn1OrMain2() && !botSolvedCardIdList.Contains(_CardId.EvilswarmExcitonKnight) && Enemy.GetMonsterCount() == 0
-                   && Enemy.SpellZone.Count(c => c != null && !c.IsShouldNotBeMonsterTarget() && !NotToDestroySpellTrap.Contains(c.Id)) > 0;
-
-            return flag;
-        }
-
-        public bool EvilswarmExcitonKnightSpSummon()
-        {
-            if (CheckWhetherNegated(true, true, CardType.Monster) || Duel.Turn == 1) return false;
-
-            return DefaultEvilswarmExcitonKnightSummon();
-        }
-
-        public bool LessSpSummonExtra()
-        {
-            if (!CheckShouldNoMoreSpSummon(CardLocation.Extra)) return false;
-
-            // No.41
-            ClientCard no41 = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-            if (no41 != null)
-            {
-                if (Number41BagooskatheTerriblyTiredTapirSummonCheck())
-                {
-                    if (Card != no41) return false;
-
-                    // Select 2 monster with lowest defense
-                    List<ClientCard> materialList = GetLevel4OnField(null);
-                    if (materialList.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-            // abyss
-            ClientCard abyss = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.AbyssDweller));
-            if (abyss != null)
-            {
-                if (AbyssDwellerSummonCheck())
-                {
-                    if (Card != abyss) return false;
-
-                    // Select 2 monster with lowest defense
-                    List<ClientCard> materialList = GetLevel4OnField(null);
-                    if (materialList.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-            // Detonator
-            ClientCard Detonator = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.RyzealDetonator));
-            if (Detonator != null)
-            {
-                List<ClientCard> materialList = GetLevel4OnField(c => c.HasSetcode(SetcodeRyzeal));
-                if (materialList.Count() >= 2)
-                {
-                    if (Card != Detonator) return false;
-                    AI.SelectMaterials(materialList);
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public bool FirstRyzealDuodriveSpSummon()
-        {
-            if (!RyzealDuodriveSpSummonCheck()) return false;
-            if (Bot.Graveyard.Count(c => c.HasSetcode(SetcodeRyzeal) && c.IsMonster()) == 0)
-            {
-                if (!CheckShouldNoMoreSpSummon(CardLocation.Hand) && Bot.HasInHand(CardId.ExRyzeal)
-                    && !spSummonedCardIdList.Contains(CardId.ExRyzeal) && Duel.MainPhase.SpecialSummonableCards.Any(c => c.IsCode(CardId.ExRyzeal))
-                    && Bot.ExtraDeck.Count(c => c.IsCode(CardId.RyzealDetonator, CardId.RyzealDuodrive)) > 2)
-                {
-                    return false;
-                }
-            }
-
-            List<ClientCard> materialList = GetLevel4OnField(null);
-            List<ClientCard> materialExceptNode = materialList
-                .Where(c => !(c.IsCode(CardId.NodeRyzeal) && !c.IsDisabled() && !activatedCardIdList.Contains(CardId.NodeRyzeal))).ToList();
-
-            if (materialExceptNode.Count() >= 2)
-            {
-                AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                return true;
-            }
-            if (materialList.Count() > 2 && !CheckCanContinueSummon())
-            {
-                AI.SelectMaterials(materialList.Take(2).ToList());
-                return true;
-            }
-            if (materialList.Count() >= 2 && !CheckCanContinueSummon(true))
-            {
-                AI.SelectMaterials(materialList.Take(2).ToList());
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool RyzealDuodriveSpSummonCheck()
-        {
-            bool checkFlag = Duel.MainPhase.SpecialSummonableCards.Any(c => c.IsCode(CardId.RyzealDuodrive));
-            checkFlag &= !Bot.HasInMonstersZone(CardId.RyzealDuodrive, true, true, true);
-            checkFlag &= CheckRemainInDeck(CardId.IceRyzeal, CardId.SwordRyzeal, CardId.NodeRyzeal, CardId.ExRyzeal, CardId.RyzealPlugIn, CardId.RyzealCross) >= 2;
-            checkFlag &= !DefaultCheckWhetherCardIdIsNegated(CardId.RyzealDuodrive);
-            checkFlag &= !activatedCardIdList.Contains(CardId.RyzealDuodrive + 1);
-            checkFlag &= !CheckWhetherNegated(true, true, CardType.Monster);
-            checkFlag &= !lockBirdSolved;
-            checkFlag &= !CheckShouldNoMoreSpSummon(CardLocation.Extra);
-
-            return checkFlag;
-        }
-
-        public bool SecondXyzSummon()
-        {
-            if (Card.Location != CardLocation.Extra) return false;
-
-            int level4Count = GetLevel4FinalCountOnField(true, out _);
-            bool result = SecondXyzSummonInner();
-            return result;
-        }
-
-        public bool SecondXyzSummonInner()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Extra)) return false;
-
-            // summon after duo driver
-            if (RyzealDuodriveSpSummonCheck()) {
-                return false;
-            }
-
-            // check whether have 4 monsters for material.
-            // if not, skip the second xyz monster.
-            int level4Count = GetLevel4FinalCountOnField(true, out bool hasNode);
-            if (level4Count <= 4) return false;
-
-            // select which monster to summon
-            List<ClientCard> materialList = GetLevel4OnField(null);
-            List<ClientCard> materialExceptNode = materialList
-                .Where(c => !(c.IsCode(CardId.NodeRyzeal) && !c.IsDisabled() && !activatedCardIdList.Contains(CardId.NodeRyzeal))).ToList();
-
-            // abyss
-            ClientCard abyss = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.AbyssDweller));
-            if (abyss != null)
-            {
-                if (AbyssDwellerSummonCheck())
-                {
-                    if (Card != abyss) return false;
-
-                    if (materialExceptNode.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                        return true;
-                    }
-                    if (materialList.Count() > 2 && !CheckCanContinueSummon())
-                    {
-                        AI.SelectMaterials(materialList.Take(2).ToList());
-                        return true;
-                    }
-                }
-            }
-            // 41
-            ClientCard no41 = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-            if (no41 != null)
-            {
-                bool flag = hasNode;
-                flag &= Util.IsTurn1OrMain2();
-                flag &= Bot.HasInExtra(CardId.TwinsOfTheEclipse) && Bot.MonsterZone.Any(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz));
-                flag &= (GetNegateEffectCount() >= 2 || lockBirdSolved);
-
-                if (flag)
-                {
-                    if (Card != no41) return false;
-
-                    if (materialExceptNode.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                        return true;
-                    }
-                    if (materialList.Count() >= 2 && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-                    {
-                        AI.SelectMaterials(materialList.Take(2).ToList());
-                        return true;
-                    }
-                }
-            }
-
-            // photon blast dragon
-            ClientCard photonDragon = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.StarliegePhotonBlastDragon));
-            bool have2MaterialDuo = false;
-            if (photonDragon != null)
-            {
-                int duoDriveOverlayCount = 0;
-                foreach (ClientCard monster in Bot.MonsterZone)
-                {
-                    if (monster == null || !monster.IsCode(CardId.RyzealDuodrive)) continue;
-                    duoDriveOverlayCount += monster.Overlays.Count();
-                }
-
-                if (Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn)) duoDriveOverlayCount++;
-                have2MaterialDuo = duoDriveOverlayCount >= 2;
-            }
-
-            if (photonDragon != null && have2MaterialDuo && enemyDeckTypeRecord.Contains(SetcodeSkyStriker))
-            {
-                if (Card != photonDragon) return false;
-
-                if (materialExceptNode.Count() >= 2)
-                {
-                    AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                    return true;
-                }
-            }
-
-            // 60
-            ClientCard no60 = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.Number60DugaresTheTimeless));
-            if (no60 != null && !lockBirdSolved)
-            {
-                bool flag = Bot.Deck.Count() > 2;
-
-                if (flag)
-                {
-                    if (Card != no60) return false;
-
-                    if (materialExceptNode.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                        return true;
-                    }
-                    if (materialList.Count() >= 2 && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-                    {
-                        AI.SelectMaterials(materialList.Take(2).ToList());
-                        return true;
-                    }
-                }
-            }
-
-            if (photonDragon != null && have2MaterialDuo)
-            {
-                if (Card != photonDragon) return false;
-
-                if (materialExceptNode.Count() >= 2)
-                {
-                    AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                    return true;
-                }
-            }
-
-            // tornado dragon
-            ClientCard Detonator = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.RyzealDetonator));
-            if (Detonator == null)
-            {
-                ClientCard tornadoDragon = Duel.MainPhase.SummonableCards.FirstOrDefault(c => c.IsCode(CardId.TornadoDragon));
-                if (tornadoDragon != null && TornadoDragonSummonCheck() && Card == tornadoDragon)
-                {
-                    if (materialExceptNode.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                        return true;
-                    }
-                    if (materialList.Count() >= 2 && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-                    {
-                        AI.SelectMaterials(materialList.Take(2).ToList());
-                        return true;
-                    }
-                }
-            }
-
-            // Detonator
-            if (Detonator != null && Card == Detonator)
-            {
-                if (materialExceptNode.Count() >= 2)
-                {
-                    AI.SelectMaterials(materialExceptNode.Take(2).ToList());
-                    return true;
-                }
-                if (materialList.Count() >= 2 && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-                {
-                    AI.SelectMaterials(materialList.Take(2).ToList());
-                    return true;
-                }
-            }
-
-            // TODO
-
-
-            return false;
-        }
-
-        public bool TwinsOfTheEclipseSpSummon()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Extra)) return false;
-            if (Util.IsTurn1OrMain2())
-            {
-                bool hasNode = Bot.HasInHand(CardId.NodeRyzeal) && !spSummonedCardIdList.Contains(CardId.NodeRyzeal);
-                hasNode |= Bot.HasInMonstersZone(CardId.NodeRyzeal, true, false, true);
-                if (Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-                {
-                    hasNode |= Bot.Graveyard.Any(c => c.IsCode(CardId.NodeRyzeal));
-                    hasNode |= Bot.Banished.Any(c => c.IsFaceup() && c.IsCode(CardId.NodeRyzeal));
-                }
-                hasNode &= !activatedCardIdList.Contains(CardId.NodeRyzeal) && !DefaultCheckWhetherCardIdIsNegated(CardId.NodeRyzeal);
-
-                List<ClientCard> materialList = new List<ClientCard>();
-                ClientCard duoDriver = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.RyzealDuodrive));
-                if (activatedCardIdList.Contains(CardId.RyzealDuodrive + 1) && duoDriver != null)
-                {
-                    materialList.Add(duoDriver);
-                    hasNode |= !CheckWhetherWillbeRemoved() && duoDriver.Overlays.Any(id => id == CardId.NodeRyzeal);
-                }
-                ClientCard no60 = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(CardId.Number60DugaresTheTimeless));
-                if (no60 != null && (activatedCardIdList.Contains(CardId.Number60DugaresTheTimeless) || no60.IsDisabled()))
-                {
-                    materialList.Add(no60);
-                    hasNode |= !CheckWhetherWillbeRemoved() && no60.Overlays.Any(id => id == CardId.NodeRyzeal);
-                }
-                ClientCard no41 = Bot.MonsterZone.FirstOrDefault(c => c != null && c.IsFaceup() && c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-                if (no41 != null)
-                {
-                    materialList.Add(no41);
-                    hasNode |= !CheckWhetherWillbeRemoved() && no41.Overlays.Any(id => id == CardId.NodeRyzeal);
-                }
-
-                if (materialList.Count() >= 2 && hasNode)
-                {
-                    AI.SelectMaterials(materialList);
-                    return true;
-                }
-            }
-            else
-            {
-                if (botSolvedCardIdList.Contains(_CardId.EvilswarmExcitonKnight))
-                {
-                    return false;
-                }
-
-                List<ClientCard> materialList = GetLevel4OnField(null);
-                List<ClientCard> xyzMonsterList = Bot.MonsterZone.Where(c => c != null && c.IsFaceup() && c.HasType(CardType.Xyz) && c.Rank == 4 && c.Attack < 2500).ToList();
-                int level4Count = GetLevel4FinalCountOnField(true, out bool hasNode) + xyzMonsterList.Count();
-                
-                if (level4Count < 4) return false;
-
-                materialList.AddRange(xyzMonsterList);
-                materialList = materialList.Where(c => c != null && c.Attack < 2500).OrderBy(c => c.GetDefensePower()).Take(2).ToList();
-                if (materialList.Count() >= 2)
-                {
-                    // check whether enemy have monster with 2more less than 2500
-                    bool checkFlag = Enemy.MonsterZone.Count(c => c != null && c.GetDefensePower() < 2500) >= 2 && !CheckWhetherNegated(true, true, CardType.Monster)
-                        && !DefaultCheckWhetherCardIdIsNegated(CardId.TwinsOfTheEclipse);
-                    if (checkFlag && materialList.Sum(c => c.Attack) < 5000)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                    else if (materialList.Sum(c => botSolvedCardIdList.Contains(CardId.RyzealPlugIn) && !c.HasType(CardType.Xyz) ? 0 : c.Attack) < 2500
-                        && !Duel.MainPhase.SpecialSummonableCards.Any(c => c.IsCode(CardId.RyzealDetonator)))
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool FinalXyzSummon()
-        {
-            if (Card.Location != CardLocation.Extra) return false;
-
-            int level4Count = GetLevel4FinalCountOnField(false, out _);
-            bool result = FinalXyzSummonInner();
-
-            return result;
-        }
-
-        public bool FinalXyzSummonInner()
-        {
-            // summon after duo driver
-            if (RyzealDuodriveSpSummonCheck())
-            {
-                return false;
-            }
-
-            int level4Count = GetLevel4FinalCountOnField(false, out _);
-            if (level4Count < 2) return false;
-
-            // No.41
-            ClientCard no41 = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-            if (no41 != null)
-            {
-                if (Number41BagooskatheTerriblyTiredTapirSummonCheck())
-                {
-                    if (Card != no41) return false;
-
-                    // Select 2 monster with lowest defense
-                    List<ClientCard> materialList = GetLevel4OnField(null);
-                    if (materialList.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-
-            // abyss
-            ClientCard abyss = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.AbyssDweller));
-            if (abyss != null)
-            {
-                if (AbyssDwellerSummonCheck())
-                {
-                    if (Card != abyss) return false;
-
-                    // Select 2 monster with lowest defense
-                    List<ClientCard> materialList = GetLevel4OnField(null);
-                    if (materialList.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-            // Detonator
-            ClientCard Detonator = Duel.MainPhase.SpecialSummonableCards.FirstOrDefault(c => c.IsCode(CardId.RyzealDetonator));
-            if (Detonator != null)
-            {
-                List<ClientCard> materialList = GetLevel4OnField(c => c.HasSetcode(SetcodeRyzeal));
-                if (materialList.Count() >= 2)
-                {
-                    if (Card != Detonator) return false;
-                    AI.SelectMaterials(materialList);
-                    return true;
-                }
-            }
-
-            // tornado dragon
-            if (Detonator == null)
-            {
-                ClientCard tornadoDragon = Duel.MainPhase.SummonableCards.FirstOrDefault(c => c.IsCode(CardId.TornadoDragon));
-                if (tornadoDragon != null && TornadoDragonSummonCheck())
-                {
-                    // Select 2 monster with lowest defense
-                    List<ClientCard> materialList = GetLevel4OnField(null);
-                    if (materialList.Count() >= 2)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool DonnerDaggerFurHireSpSummon()
-        {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Extra))
-            {
-                return false;
-            }
-            bool haveEnemyTarget = Enemy.MonsterZone.Any(c => c != null && !c.IsShouldNotBeMonsterTarget()) && !CheckWhetherNegated(true, true, CardType.Monster);
-
-            List<ClientCard> illegalList = Bot.GetMonsters().Where(card => card.IsFaceup() && card.Level != 4 && card.Rank != 4).OrderBy(c => c.GetDefensePower()).ToList();
-            bool necessary = Bot.HasInHand(CardId.ExRyzeal) && !spSummonedCardIdList.Contains(CardId.ExRyzeal) && !activatedCardIdList.Contains(CardId.ExRyzeal)
-                && illegalList.Count() > 0;
-            bool needDestory = !CheckWhetherNegated(true, true, CardType.Monster)
-                && Enemy.MonsterZone.Any(c => c != null && !c.IsShouldNotBeMonsterTarget() && c.IsFloodgate() && !c.IsDisabled());
-            necessary |= needDestory;
-
-            if (necessary)
-            {
-                if (illegalList.Count() == 1 && haveEnemyTarget)
-                {
-                    List<ClientCard> otherMaterialList = Bot.GetMonsters().Where(card => card.IsFaceup() && !illegalList.Contains(card) && (card.Owner == 1 || !card.HasType(CardType.Xyz))).ToList();
-                    otherMaterialList.Sort(CardContainer.CompareCardAttack);
-                    illegalList.AddRange(otherMaterialList);
-                }
-
-                if (illegalList.Count() > 1)
-                {
-                    List<ClientCard> materialList = illegalList.Take(2).ToList();
-                    if (Util.GetBotAvailZonesFromExtraDeck(materialList) > 0)
-                    {
-                        AI.SelectMaterials(materialList);
-                        return true;
-                    }
-                }
-            }
-
-            if (Duel.Phase == DuelPhase.Main2)
-            {
-                List<ClientCard> enemyOwnerMonsters = Bot.MonsterZone.Where(c => c != null && c.IsFaceup() && c.Owner == 1).OrderBy(c => c.GetDefensePower()).ToList();
-                if (enemyOwnerMonsters.Count() > 0 && haveEnemyTarget)
-                {
-                    if (enemyOwnerMonsters.Count() == 1)
-                    {
-                        List<ClientCard> otherMaterialList = Bot.GetMonsters()
-                            .Where(card => card.IsFaceup() && !enemyOwnerMonsters.Contains(card) && (!card.HasType(CardType.Xyz) || card.Overlays.Count() == 0))
-                            .OrderBy(c => c.GetDefensePower()).ToList();
-                        enemyOwnerMonsters.AddRange(otherMaterialList);
-                    }
-
-                    if (enemyOwnerMonsters.Count() > 1)
-                    {
-                        List<ClientCard> materialList = enemyOwnerMonsters.Take(2).ToList();
-                        if (Util.GetBotAvailZonesFromExtraDeck(materialList) > 0)
-                        {
-                            AI.SelectMaterials(materialList);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        // TODO extra effect
-
-
-        public bool MereologicAggregatorActivateFirst()
-        {
-            List<Func<ClientCard, bool>> multiNegateFuncList = new List<Func<ClientCard, bool>> {
-                {c => c.IsCode(44665365, 48546368, 54178659) && c.IsMonster() },
-                {c => c.IsCode(4280258) && c.Attack >= 800 },
-                {c => c.IsCode(47297616) && c.Attack >= 500 && c.Defense >= 500 },
-                {c => c.IsCode(19652159) && c.Attack >= 1000 && c.Defense >= 1000 },
-                {c => c.IsCode(79600447) && Enemy.MonsterZone.Any(m => m != null && m.IsFaceup() && m.IsCode(23288411) && m.Attack >= 1000) }
-            };
-            List<ClientCard> searchCardList = new List<ClientCard>(Enemy.GetMonsters());
-            searchCardList.AddRange(Enemy.GetSpells());
-            foreach (ClientCard card in searchCardList)
-            {
-                if (card == null || card.IsFacedown() || card.IsDisabled()) continue;
-                foreach (Func<ClientCard, bool> func in multiNegateFuncList)
-                {
-                    if (func(card))
-                    {
-                        AI.SelectCard(card);
-                        currentNegateCardList.Add(card);
-                        activatedCardIdList.Add(Card.Id + 2);
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        public bool MereologicAggregatorActivateLater()
-        {
-            if (CheckWhetherNegated(true)) return false;
-
-            ClientCard lastChainCard = Util.GetLastChainCard();
-
-            // for Chain1 ExRyzeal Chain2 Mereo to negate No41
-            if (lastChainCard != null && lastChainCard.Controller == 0 && lastChainCard.IsCode(CardId.ExRyzeal))
-            {
-                ClientCard no41 = Enemy.GetMonsters().FirstOrDefault(c =>
-                    c.IsFaceup() && !c.IsDisabled() && c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir) && c.HasPosition(CardPosition.FaceUpDefence) && !currentNegateCardList.Contains(c));
-                if (no41 != null)
-                {
-                    currentNegateCardList.Add(no41);
-                    AI.SelectCard(no41);
-                    activatedCardIdList.Add(Card.Id + 2);
-                    return true;
-                }
-            }
-
-            List<ClientCard> targetList = GetNormalEnemyTargetList(true, false, CardType.Monster, true).Where(c => c.IsFaceup() && !c.IsDisabled()).ToList();
-            if (targetList.Count() > 0)
-            {
-                currentNegateCardList.Add(targetList[0]);
-                AI.SelectCard(targetList);
-                activatedCardIdList.Add(Card.Id + 2);
-                return true;
-            }
-
-            // protect chain
-            if (lastChainCard != null && lastChainCard.Controller == 0 && lastChainCard.IsCode(CardId.ExRyzeal))
-            {
-                foreach (ClientCard card in Bot.GetMonsters())
-                {
-                    if (card.IsFacedown() || Duel.CurrentChain.Contains(card) || card.IsDisabled() || !card.HasType(CardType.Effect)) continue;
-                    bool flag = card.IsCode(CardId.IceRyzeal, CardId.SwordRyzeal);
-                    flag |= card.IsCode(CardId.NodeRyzeal) && activatedCardIdList.Contains(CardId.NodeRyzeal);
-                    flag |= card.HasType(CardType.Xyz) && !card.HasXyzMaterial() && !card.IsCode(CardId.RyzealDetonator, CardId.RyzealDuodrive, CardId.FullArmoredUtopicRayLancer);
-                    if (flag)
-                    {
-                        AI.SelectCard(card);
-                        activatedCardIdList.Add(Card.Id + 2);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public bool RyzealDetonatorActivate()
-        {
-            if (ActivateDescription == 96)
-            {
-                Logger.DebugWriteLine("** Detonator replace destroy");
-                if (DetonatorDestroySelf != Card)
-                {
-                    activatedCardIdList.Add(CardId.RyzealDetonator + 2);
-                    return true;
-                }
-                return false;
-            }
-            if (CheckWhetherNegated(true)) return false;
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealDetonator, 0))
-            {
-                // destroy self
-                bool shouldDestroySelf = false;
-                bool willBeNegated = false;
-                ClientCard lastChainCard = Util.GetLastChainCard();
-                if (lastChainCard != null && lastChainCard.Controller == 1 && lastChainCard.IsCode(targetNegateIdList))
-                {
-                    shouldDestroySelf = true;
-                    willBeNegated = true;
-                }
-                shouldDestroySelf |= Duel.CurrentChain.Any(c => c != null && c.Controller == 1 && !c.IsDisabled() && !DefaultCheckWhetherCardIdIsNegated(c.Id)
-                    && c.IsCode(_CardId.EvenlyMatched, 35480699));
-                shouldDestroySelf |= Card.Overlays.Count() == 1 && !activatedCardIdList.Contains(CardId.RyzealDetonator)
-                    && GetProblematicEnemyCardList(true, false, CardType.Monster).Count() == 0;
-
-                if (shouldDestroySelf)
-                {
-                    bool canRebornSelf = Bot.SpellZone.Count(c => c != null && c.IsFacedown() && c.IsCode(CardId.RyzealPlugIn) && !Duel.ChainTargets.Contains(c)) > 0;
-                    bool canActivateTwin = !activatedCardIdList.Contains(CardId.TwinsOfTheEclipse + 1) && !DefaultCheckWhetherCardIdIsNegated(CardId.TwinsOfTheEclipse)
-                        && !CheckWhetherWillbeRemoved();
-                    canRebornSelf |= canActivateTwin && Card.Overlays.Contains(CardId.TwinsOfTheEclipse);
-                    if (Duel.CurrentChain.Any(c => c != null && c.Controller == 1 && !c.IsDisabled() && !DefaultCheckWhetherCardIdIsNegated(c.Id)
-                        && c.IsCode(_CardId.EvenlyMatched)))
-                    {
-                        canRebornSelf |= Bot.MonsterZone.Any(c => c != null && c.HasType(CardType.Xyz) && c.Overlays.Contains(CardId.TwinsOfTheEclipse));
-                    }
-
-                    if (canRebornSelf)
-                    {
-                        DetonatorDestroySelf = Card;
-                        return true;
-                    }
-                }
-
-
-                // destroy
-                if (CanDestroyList(willBeNegated).Count() > 0)
-                {
-                    return true;
-                }
-            }
-            else
-            {
-                // attach
-                activatedCardIdList.Add(Card.Id);
-                return true;
-            }
-            return false;
-
-        }
-
-        public bool RyzealDuodriveActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-
-            if (ActivateDescription == Util.GetStringId(CardId.RyzealDuodrive, 1))
-            {
-                int overlayCount = 0;
-                foreach (ClientCard card in Bot.MonsterZone)
-                {
-                    if (card == null || card.Overlays.Count() == 0) continue;
-                    if (card.IsCode(CardId.Number60DugaresTheTimeless) && !card.IsDisabled() && !activatedCardIdList.Contains(CardId.Number60DugaresTheTimeless))
-                    {
-                        continue;
-                    }
-                    overlayCount += card.Overlays.Count();
-                }
-                if (overlayCount >= 2)
-                {
-                    // deattach and search
-                    activatedCardIdList.Add(Card.Id + 1);
-                    return true;
-                }
-            } else
-            {
-                // attach
-                activatedCardIdList.Add(Card.Id);
-                return true;
-            }
-
-            return false;
-        }
-
-        public bool TwinsOfTheEclipseActivate()
-        {
-            if (Card.Location == CardLocation.MonsterZone)
-            {
-                // double attack
-                // dump remove material
-                if (CheckWhetherNegated(true)) return Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn);
-                activatedCardIdList.Add(Card.Id);
-                return true;
-
-            } else if (Card.Location == CardLocation.Grave)
-            {
-                // spsummon
-                if (CheckWhetherNegated(true)) return false;
-
-                activatedCardIdList.Add(Card.Id + 1);
-                ClientCard rebornTarget = TwinsOfTheEclipseRebornTarget(null);
-                if (rebornTarget != null)
-                {
-                    ClientCard mereo = Bot.Graveyard.FirstOrDefault(c => c.IsCode(CardId.MereologicAggregator));
-                    if (mereo != null)
-                    {
-                        AI.SelectCard(new List<ClientCard> { rebornTarget, mereo });
-                        return true;
-                    }
-                    ClientCard nonLightDark = Bot.Graveyard.FirstOrDefault(c => c.HasType(CardType.Xyz) && !c.HasAttribute((CardAttribute)attrbuteLightDark));
-                    if (nonLightDark != null)
-                    {
-                        AI.SelectCard(new List<ClientCard> { rebornTarget, nonLightDark });
-                        return true;
-                    }
-                    ClientCard xyzMonster = Bot.Graveyard.FirstOrDefault(c => c.HasType(CardType.Xyz));
-                    if (xyzMonster != null)
-                    {
-                        AI.SelectCard(new List<ClientCard> { rebornTarget, xyzMonster });
-                        return true;
-                    }
-                }
-
-                // although cannot find target, still should activate.
-                return true;
-            }
-
-            return false;
-        }
-
-        public ClientCard TwinsOfTheEclipseRebornTarget(List<ClientCard> targetList)
-        {
-            if (targetList == null)
-            {
-                targetList = Bot.Graveyard.Where(c => c.HasType(CardType.Xyz) && c.IsCanRevive()).ToList();
-            }
-            ClientCard duoDriver = targetList.FirstOrDefault(c => c.IsCode(CardId.RyzealDuodrive));
-            ClientCard Detonator = targetList.FirstOrDefault(c => c.IsCode(CardId.RyzealDetonator));
-            ClientCard no41 = targetList.FirstOrDefault(c => c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir));
-            ClientCard abyssDweller = targetList.FirstOrDefault(c => c.IsCode(CardId.AbyssDweller));
-
-            if (no41 != null && !DefaultCheckWhetherCardIdIsNegated(_CardId.Number41BagooskatheTerriblyTiredTapir)
-                && !(Detonator != null && !activatedCardIdList.Contains(CardId.RyzealDetonator))
-                && !(Duel.Turn == 1 && duoDriver != null))
-            {
-                return no41;
-            }
-
-            if (abyssDweller != null && !DefaultCheckWhetherCardIdIsNegated(CardId.AbyssDweller) && !botSolvedCardIdList.Contains(CardId.AbyssDweller)
-                && AbyssDwellerSummonCheck())
-            {
-                return abyssDweller;
-            }
-
-            if (Detonator != null)
-            {
-                return Detonator;
-            }
-            if (duoDriver != null && (!activatedCardIdList.Contains(CardId.RyzealDuodrive + 1) || Bot.HasInHandOrInSpellZone(CardId.RyzealCross)))
-            {
-                return duoDriver;
-            }
-
-            // random spsummon
-            if (targetList.Count() > 0)
-            {
-                return ShuffleList(targetList)[0];
-            }
-            return null;
-        }
-
-        public List<ClientCard> CanDestroyList(bool ignoreCurrentDestroy = false)
-        {
-            List<ClientCard> destroyTargetList = GetNormalEnemyTargetList(true, ignoreCurrentDestroy, CardType.Monster).Except(currentNegateCardList).ToList();
-
-            List<int> cannotDestroyList = new List<int>(NotToDestroySpellTrap);
-            destroyTargetList.RemoveAll(c => c.IsCode(cannotDestroyList));
-
-            List<int> undestoryableCardIdlist = new List<int> { 94977269, 58604027, 8062132, 10817524, 53315891, 10000090, 86221741, 71222868,
-                83257450, 97489701, 97165977, 24550676, 55410871, 72664875, 85908279, 13331639, 20654247, 43228023, 99585850, 92770064, 10497636, 77313225 };
-            destroyTargetList.RemoveAll(c => !c.IsDisabled() && c.IsCode(undestoryableCardIdlist));
-
-            destroyTargetList.RemoveAll(c => !c.IsDisabled() && c.HasSetcode(SetcodeMajespecter));
-            
-            if (Enemy.GetSpells().Any(c => c.IsFacedown()) || Enemy.GetMonsters().Any(c => c.IsFacedown()))
-            {
-                destroyTargetList.RemoveAll(c => c.IsCode(81497285));
-            }
-            destroyTargetList.RemoveAll(c => !c.IsDisabled() && c.HasSetcode(SetcodeMajespecter));
-
-
-            return destroyTargetList;
-        }
-
-        public bool TornadoDragonActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-
-            List<ClientCard> spells = Enemy.GetSpells();
-            if (spells.Count == 0)
+            if (IsActivateEffectUsedThisTurn(CardId.IceRyzeal)) // HOPT: 발동효과 턴당 1번 (룰특수소환과 별개)
                 return false;
 
-            // destroy faceup card first
-            ClientCard selected = Enemy.SpellZone.GetFloodgate();
-            if (selected == null && Duel.Player == 1)
-            {
-                List<ClientCard> targetList = spells.Where(c => c.IsFaceup() && !NotToDestroySpellTrap.Contains(c.Id) && !currentDestroyCardList.Contains(c)
-                    && c.HasType(CardType.Continuous | CardType.Equip | CardType.Field | CardType.Pendulum)).ToList();
-                if (targetList.Count() > 0)
-                {
-                    selected = ShuffleList(targetList)[0];
-                }
-            }
+            if (!_iceNormalSummonedThisTurn) // 일반소환 성공시에만 - 룰특수소환으론 안 터짐
+                return false;
 
-            if (selected != null)
-            {
-                currentDestroyCardList.Add(selected);
-                AI.SelectCard(selected);
-                return true;
-            }
+            if (Card == null || Card.Location != CardLocation.MonsterZone)
+                return false;
 
-            // destroy face-down card
-            if (selected == null)
-            {
-                List<ClientCard> setThisTurnList = Enemy.SpellZone.Where(c => c != null && c.IsFacedown() && !currentDestroyCardList.Contains(c)
-                    && enemyPlaceThisTurn.Contains(c)).ToList();
-                if (setThisTurnList.Count() > 0)
-                {
-                    selected = ShuffleList(setThisTurnList)[0];
-                }
-            }
-            if (selected == null)
-            {
-                List<ClientCard> setThisTurnList = Enemy.SpellZone.Where(c => c != null && c.IsFacedown() && !currentDestroyCardList.Contains(c)).ToList();
-                if (setThisTurnList.Count() > 0)
-                {
-                    selected = ShuffleList(setThisTurnList)[0];
-                }
-            }
+            if (!Bot.HasInMonstersZone(CardId.IceRyzeal))
+                return false;
 
-            bool flag = Duel.Player == 0;
-            flag |= Duel.Player == 1 && Duel.Phase == DuelPhase.End;
-            flag |= DefaultOnBecomeTarget();
+            if (Bot.GetMonsterCount() >= 5) // 특수소환할 빈 몬스터존 필요 (메인 몬스터존 5칸 기준 근사치)
+                return false;
 
-            if (flag)
-            {
-                currentDestroyCardList.Add(selected);
-                AI.SelectCard(selected);
-                return true;
-            }
-
-            return false;
+            return GetRyzealDeckTarget(CardId.IceRyzeal) != -1;
         }
 
-        public bool EvilswarmExcitonKnightActivate()
+        private bool CommitActivateIceRyzealEffect()
         {
-            if (CheckWhetherNegated(true)) return false;
-            return DefaultEvilswarmExcitonKnightEffect();
-        }
+            int target = GetRyzealDeckTarget(CardId.IceRyzeal);
+            if (target == -1) return false; // 안전장치
 
-        public bool AbyssDwellerActivate()
-        {
-            if (botSolvedCardIdList.Contains(CardId.AbyssDweller)) return false;
-
-            if (Duel.Player == 0 && Bot.HasInHandOrInSpellZone(CardId.RyzealPlugIn))
-            {
-                List<int> checkIdList = new List<int> { CardId.NodeRyzeal, CardId.SwordRyzeal, CardId.ExRyzeal };
-                foreach (int checkId in checkIdList)
-                {
-                    if (Card.Overlays.Contains(checkId) && !Bot.HasInHand(checkId) && !activatedCardIdList.Contains(checkId))
-                    {
-                        return true;
-                    }
-                    return false;
-                }
-            }
-            if (Duel.Player == 1)
-            {
-                if (CheckWhetherNegated(true)) return false;
-                if (enemyDeckTypeRecord.Contains(SetcodeAtlantean)) return true;
-                return Enemy.GetMonsterCount() + Enemy.GetSpellCount() > 0;
-            }
-
-            return false;
-        }
-
-        public bool Number60DugaresTheTimelessActivate()
-        {
-            if (CheckWhetherNegated(true)) return false;
-            if (Number60DugaresTheTimelessDrawEffect() || Number60DugaresTheTimelessDoubleTarget() != null || Number60DugaresTheTimelessRebornEffect())
-            {
-                activatedCardIdList.Add(Card.Id);
-                return true;
-            }
-            return false;
-        }
-
-        public bool Number60DugaresTheTimelessDrawEffect()
-        {
-            if (lockBirdSolved || Bot.Deck.Count < 2) return false;
-            activatedCardIdList.Add(Card.Id);
+            MarkActivateEffectUsedThisTurn(CardId.IceRyzeal);
+            AI.SelectCard(target); // 손 서치가 아니라 덱 -> 필드 직접 특수소환
             return true;
         }
 
-        public ClientCard Number60DugaresTheTimelessDoubleTarget()
+        private bool IceRyzealEffect()
         {
-            if (Util.IsTurn1OrMain2()) return null;
-            ClientCard maxAttackMonster = Bot.MonsterZone.Where(c => c != null && (c.HasPosition(CardPosition.FaceUpAttack) || !summonThisTurn.Contains(c)))
-                .OrderByDescending(c => c.Attack).FirstOrDefault();
-
-            if (maxAttackMonster != null)
-            {
-                int maxBotAttack = maxAttackMonster.Attack;
-
-                // defeat enemy monster
-                ClientCard bestEnemyMonster = Enemy.MonsterZone.Where(c => c != null && c.IsFaceup() && (c.IsDisabled() || !c.IsMonsterInvincible()))
-                    .OrderByDescending(c => c.GetDefensePower()).FirstOrDefault();
-                if (bestEnemyMonster != null)
-                {
-                    int maxEnemyPower = bestEnemyMonster.GetDefensePower();
-                    if (bestEnemyMonster.IsAttack()) maxEnemyPower -= 1;
-                    if (maxBotAttack < maxEnemyPower && maxBotAttack * 2 > maxEnemyPower)
-                    {
-                        return maxAttackMonster;
-                    }
-                }
-
-                // direct attack
-                if (!botSolvedCardIdList.Contains(_CardId.EvilswarmExcitonKnight))
-                {
-                    int currentAttack = GetBotCurrentTotalAttack();
-                    if (currentAttack < Enemy.LifePoints && currentAttack + maxBotAttack >= Enemy.LifePoints)
-                    {
-                        return maxAttackMonster;
-                    }
-                }
-            }
-
-            return null;
+            if (!CanActivateIceRyzealEffect()) return false;
+            return CommitActivateIceRyzealEffect();
         }
 
-        public bool Number60DugaresTheTimelessRebornEffect()
-        {
-            // not used
+        // ============================================================
+        // Ryzeal 몬스터들의 "1번 효과" = 룰 특수소환(체인 안 씀), 카드마다 조건/코스트가 다름.
+        // 발동형 효과(서치 등, 위쪽 IceRyzealEffect/SwordRyzealEffect)와는 별개의 HOPT.
+        // ============================================================
 
-            return false;
+        private bool IsRyzealMonster(int cardId)
+        {
+            return RyzealMonsters.Contains(cardId);
         }
 
-        public bool DonnerDaggerFurHireActivate()
+        private bool HasLevel4OnField()
         {
-            if (CheckAtAdvantage() && !Bot.HasInHand(CardId.ExRyzeal))
-            {
+            return Bot.GetMonsters().Any(c => Level4Monsters.Contains(c.Id));
+        }
+
+        // 필드 Level4 카드 수가 홀수일 때, Level4 몬스터를 필드에 하나 더 추가하는 행동은
+        // Detonator/Duo Drive(레벨4 2장 필요) 같은 Rank4 엑시즈 소환을 "짝수"로 맞춰줘서
+        // 추가 전개로 이어질 수 있게 한다.
+        // 원래는 "이 행동 이후 실제로 Rank4 엑시즈를 하면 그 가치가 높다"를 미래 예측(lookahead)으로
+        // 반영해야 하지만, 지금 단계에선 그 계산이 어려워서 "짝수를 만드는 행동" 자체에
+        // 직접 가산점을 주는 방식으로 근사한다. (다섯 룰 특수소환 전부 "레벨4 자신을 필드에
+        // 추가"하는 동일 매커니즘이라 Ice/Sword/Node/Ext/Star 전부에 동일 적용)
+        private const double EvenLevel4BonusScore = 50; // TODO: 실전 테스트로 값 조정 필요
+
+        private double GetEvenLevel4Bonus()
+        {
+            int level4Count = Bot.GetMonsters().Count(c => Level4Monsters.Contains(c.Id));
+            return (level4Count % 2 == 1) ? EvenLevel4BonusScore : 0;
+        }
+
+        // --- Ice: 패/필드의 카드 1장을 묘지로 보내고 특수소환 ---
+        private bool CanSpecialSummonIceRyzeal()
+        {
+            if (IsSpecialSummonEffectUsedThisTurn(CardId.IceRyzeal)) return false;
+            if (!Bot.HasInHand(CardId.IceRyzeal)) return false;
+
+            // 코스트: Ice 자신 말고 묘지로 보낼 카드가 손패 또는 필드에 있어야 함
+            bool hasCostTarget = Bot.Hand.Count(c => c.Id != CardId.IceRyzeal) > 0
+                || Bot.GetMonsters().Count > 0
+                || Bot.GetSpells().Count > 0;
+            return hasCostTarget;
+        }
+
+        // Ice 룰 특수소환의 코스트로 보낼 카드를 선택한다.
+        // 기본 원칙:
+        // 1) 손패의 Ice 이외 카드 우선
+        // 2) 손패에 없으면 필드의 Level 4가 아닌 몬스터 우선
+        // 3) 그래도 없으면 필드의 다른 카드
+        // 4) 마지막 수단으로 필드의 Level 4를 허용
+        //
+        // 필드의 Level 4를 남겨두면 Mulcharmy Fuwalos/Purulia 같은 Level 4
+        // 몬스터를 추가 소재로 활용해 Rank 4 Xyz로 이어갈 수 있으므로 보존한다.
+        private int GetIceRyzealCostTarget()
+        {
+            // 1. 손패의 Ice 이외 카드: 필드 Level 4를 건드리지 않는다.
+            ClientCard handTarget = Bot.Hand.FirstOrDefault(c => c.Id != CardId.IceRyzeal);
+            if (handTarget != null)
+                return handTarget.Id;
+
+            // 2. 필드의 Level 4가 아닌 몬스터.
+            ClientCard nonLevel4Monster = Bot.GetMonsters()
+                .FirstOrDefault(c => !Level4Monsters.Contains(c.Id));
+            if (nonLevel4Monster != null)
+                return nonLevel4Monster.Id;
+
+            // 3. 필드의 마법/함정.
+            ClientCard spellTarget = Bot.GetSpells().FirstOrDefault();
+            if (spellTarget != null)
+                return spellTarget.Id;
+
+            // 4. 다른 선택지가 없으면 Level 4 몬스터를 코스트로 사용.
+            ClientCard level4Monster = Bot.GetMonsters()
+                .FirstOrDefault(c => Level4Monsters.Contains(c.Id));
+            if (level4Monster != null)
+                return level4Monster.Id;
+
+            return -1;
+        }
+
+        private bool CommitSpecialSummonIceRyzeal()
+        {
+            int target = GetIceRyzealCostTarget();
+            if (target == -1)
                 return false;
-            }
 
-            ClientCard targetCard = GetProblematicEnemyMonster(canBeTarget: true, selfType: CardType.Monster);
-            if (targetCard == null)
-            {
-                List<ClientCard> enemyMonsters = Enemy.GetMonsters();
-                if (enemyMonsters.Count() > 0)
-                {
-                    enemyMonsters.Sort(CardContainer.CompareCardAttack);
-                    enemyMonsters.Reverse();
-                    targetCard = enemyMonsters[0];
-                }
-            }
-
-            if (targetCard != null)
-            {
-                AI.SelectCard(Card);
-                AI.SelectNextCard(targetCard);
-                currentDestroyCardList.Add(targetCard);
-                return true;
-            }
-
-            return false;
+            MarkSpecialSummonEffectUsedThisTurn(CardId.IceRyzeal);
+            AI.SelectCard(target);
+            return true;
         }
 
-
-
-        public bool Level4Summon()
+        // --- Sword: 필드/묘지에 Ryzeal 몬스터가 존재하면 특수소환 (코스트 없음) ---
+        private bool CanSpecialSummonSwordRyzeal()
         {
-            if (CheckShouldNoMoreSpSummon(CardLocation.Hand | CardLocation.Extra)) return false;
-            ClientCard leastAttackLevel4 = Bot.Hand.Where(c => c.Level == 4).OrderBy(c => c.Attack).FirstOrDefault();
-            if (leastAttackLevel4 == null || Card != leastAttackLevel4) return false;
+            if (IsSpecialSummonEffectUsedThisTurn(CardId.SwordRyzeal)) return false;
+            if (!Bot.HasInHand(CardId.SwordRyzeal)) return false;
 
-            if (GetLevel4CountOnField() == 1)
-            {
-                ClientCard target = Duel.MainPhase.SummonableCards.Where(c => c != null && c.Level == 4).OrderBy(c => c.Attack).FirstOrDefault();
-                if (Card != target) return false;
-                summonCount -= 1;
-                return true;
-            }
-
-            return false;
+            bool hasRyzealMonster = Bot.GetMonsters().Any(c => IsRyzealMonster(c.Id))
+                || Bot.Graveyard.Any(c => IsRyzealMonster(c.Id));
+            return hasRyzealMonster;
         }
 
-
-        public bool SpellSetCheck()
+        private bool CommitSpecialSummonSwordRyzeal()
         {
-            if (Duel.Phase == DuelPhase.Main1 && Bot.HasAttackingMonster() && Duel.Turn > 1) return false;
-
-            // select place
-            if ((Card.IsTrap() || Card.HasType(CardType.QuickPlay)))
-            {
-                // do not set infinite impermanence if don't need to set other cards
-                if (Card.IsCode(_CardId.InfiniteImpermanence) && Bot.GetMonsterCount() == 0 && Bot.GetSpellCount() == 0
-                    && !Bot.Hand.Any(c => !c.IsCode(_CardId.InfiniteImpermanence) && (c.IsTrap() || c.HasType(CardType.QuickPlay)))
-                    && Bot.Hand.Count() <= 6)
-                {
-                    return false;
-                }
-
-                if (Card.IsCode(CardId.RyzealPlugIn))
-                {
-                    bool targetFlag = Bot.Graveyard.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && (c.Level == 4 || c.IsCanRevive()));
-                    targetFlag |= Bot.Banished.Any(c => c != null && c.IsFaceup() && c.HasSetcode(SetcodeRyzeal) && (c.Level == 4 || c.IsCanRevive()));
-                    if (!targetFlag)
-                    {
-                        return false;
-                    }
-                }
-
-                List<int> avoid_list = new List<int>();
-                int setForInfiniteImpermanence = 0;
-                for (int i = 0; i < 5; ++i)
-                {
-                    if (Enemy.SpellZone[i] != null && Enemy.SpellZone[i].IsFaceup() && Bot.SpellZone[4 - i] == null)
-                    {
-                        avoid_list.Add(4 - i);
-                        setForInfiniteImpermanence += (int)System.Math.Pow(2, 4 - i);
-                    }
-                }
-                if (Bot.HasInHand(_CardId.InfiniteImpermanence))
-                {
-                    if (Card.IsCode(_CardId.InfiniteImpermanence))
-                    {
-                        AI.SelectPlace(setForInfiniteImpermanence);
-                        return true;
-                    }
-                    else
-                    {
-                        SelectSTPlace(Card, false, avoid_list);
-                        return true;
-                    }
-                }
-                else
-                {
-                    SelectSTPlace();
-                }
-                return true;
-            }
-
-            else if (Enemy.HasInSpellZone(_CardId.AntiSpellFragrance, true) || Bot.HasInSpellZone(_CardId.AntiSpellFragrance, true))
-            {
-                if (Card.IsSpell() && !Bot.HasInSpellZone(Card.Id))
-                {
-                    SelectSTPlace();
-                    return true;
-                }
-            }
-
-            return false;
+            MarkSpecialSummonEffectUsedThisTurn(CardId.SwordRyzeal);
+            return true; // 코스트 없음 - 추가 선택 불필요
         }
 
-        public bool ChangePositionFirst()
+        // --- Node: 필드/묘지에 Xyz 몬스터가 존재하면 특수소환 (코스트 없음) ---
+        private bool CanSpecialSummonNodeRyzeal()
         {
-            if (Card.IsFacedown() && Card.Level == 4)
-            {
-                return true;
-            }
+            if (IsSpecialSummonEffectUsedThisTurn(CardId.NodeRyzeal)) return false;
+            if (!Bot.HasInHand(CardId.NodeRyzeal)) return false;
 
-            if (Enemy.MonsterZone.Any(c => c != null && c.HasPosition(CardPosition.FaceUpDefence) && !c.IsDisabled() && c.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir)))
+            bool hasXyz = Bot.GetMonsters().Any(c => c.HasType(CardType.Xyz))
+                || Bot.Graveyard.Any(c => c.HasType(CardType.Xyz));
+            return hasXyz;
+        }
+
+        private bool CommitSpecialSummonNodeRyzeal()
+        {
+            MarkSpecialSummonEffectUsedThisTurn(CardId.NodeRyzeal);
+            return true;
+        }
+
+        // Node ignition effect (c72238166.lua e2): send 1 card from hand/field as cost,
+        // then target and revive another Ryzeal monster from GY in face-up defense with effects negated.
+        // Both selections are queued before the engine asks; no prompt is left to the default selector.
+        private ClientCard GetNodeRyzealCostCard()
+        {
+            // On a full field prefer a monster cost; a hand/spell cost cannot free a zone.
+            if (Bot.GetMonsterCount() >= 5)
+                return Bot.GetMonsters().FirstOrDefault(c => c.IsFaceup());
+            var duplicate = Bot.Hand.FirstOrDefault(c => c.Id != CardId.NodeRyzeal && Bot.Hand.Count(x => x.Id == c.Id) > 1);
+            if (duplicate != null) return duplicate;
+            var nonRyzeal = Bot.Hand.FirstOrDefault(c => !IsRyzealCard(c.Id));
+            if (nonRyzeal != null) return nonRyzeal;
+            var spell = Bot.GetSpells().FirstOrDefault();
+            if (spell != null) return spell;
+            // Remaining Ryzeal hand cards are legal costs as well.
+            var hand = Bot.Hand.FirstOrDefault();
+            if (hand != null) return hand;
+            return Bot.GetMonsters().FirstOrDefault();
+        }
+        private int GetNodeRyzealCostTarget()
+        {
+            var card = GetNodeRyzealCostCard();
+            return card == null ? -1 : card.Id;
+        }
+
+        private int GetNodeRyzealReviveTarget()
+        {
+            // The revived monster is negated, so choose it as a Rank 4 body rather than for its effect.
+            int[] priority = { CardId.ExtRyzeal, CardId.SwordRyzeal, CardId.IceRyzeal, CardId.StarRyzeal };
+            foreach (int id in priority)
+                if (Bot.Graveyard.Any(c => c.Id == id)) return id;
+            return -1;
+        }
+
+        private bool CanActivateNodeRyzealEffect()
+        {
+            if (IsActivateEffectUsedThisTurn(CardId.NodeRyzeal)) return false;
+            if (Card == null || Card.Location != CardLocation.MonsterZone) return false;
+            if (!Bot.HasInMonstersZone(CardId.NodeRyzeal)) return false;
+            if (GetNodeRyzealCostTarget() == -1 || GetNodeRyzealReviveTarget() == -1) return false;
+
+            // Lua checks Duel.GetMZoneCount(tp, costCard). A full field remains legal only when
+            // the selected cost itself is a monster and therefore frees a monster zone.
+            return Bot.GetMonsterCount() < 5 || Bot.GetMonsters().Count > 0;
+        }
+
+        private string GetNodeRyzealSelectionPlan()
+        {
+            return "cost:" + GetNodeRyzealCostTarget() + ";revive:" + GetNodeRyzealReviveTarget()
+                + ";position:FaceUpDefence;revivedEffects:negated";
+        }
+
+        private bool CommitActivateNodeRyzealEffect()
+        {
+            int cost = GetNodeRyzealCostTarget();
+            int revive = GetNodeRyzealReviveTarget();
+            if (cost == -1 || revive == -1) return false;
+
+            // GameAI queues selectors in prompt order: cost selection, then GY target selection.
+            ClientCard costCard = GetNodeRyzealCostCard();
+            ClientCard reviveCard = Bot.Graveyard.FirstOrDefault(c => c.Id == revive);
+            if (costCard == null || reviveCard == null) return false;
+            AI.SelectCard(costCard);
+            AI.SelectNextCard(reviveCard);
+            // Node's Lua fixes defense position; no position prompt is generated.
+            // Do not queue SelectPosition here (it could leak into a later summon).
+            MarkActivateEffectUsedThisTurn(CardId.NodeRyzeal);
+            return true;
+        }
+
+        private bool NodeRyzealEffect()
+        {
+            if (!CanActivateNodeRyzealEffect()) return false;
+            return CommitActivateNodeRyzealEffect();
+        }
+
+        // 순수 조건 판정: 지금 ExtRyzeal 효과로 서치할 대상이 있는지만 계산.
+        // Ext의 실제 필터는 FIRE + Thunder (c34022970.lua thfilter). 현재 덱에서는
+        // ThunderMonsters가 곧 Ext의 합법적인 검색 범위다.
+        private int GetExtRyzealSearchTarget()
+        {
+            foreach (var id in ThunderMonsters)
             {
+                if (!IsCardAnywhere(id) && Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
+            }
+            foreach (var id in ThunderMonsters)
+            {
+                if (Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
+            }
+            return -1;
+        }
+
+        // 추가 조건(c34022970.lua thtg): 필드에 "레벨4도 랭크4도 아닌" 앞면 몬스터가
+        // 하나라도 있으면 이 효과 자체가 발동 불가. (thconfilter: IsFaceup and not(Level4 or Rank4))
+        private bool HasFieldMonsterBlockingExtSearch()
+        {
+            return Bot.GetMonsters().Any(c => c.IsFaceup() && c.Level != 4 && c.Rank != 4);
+        }
+
+        private bool CanActivateExtRyzealEffect()
+        {
+            if (IsActivateEffectUsedThisTurn(CardId.ExtRyzeal)) // HOPT: 발동효과 턴당 1번 (룰특수소환과 별개)
                 return false;
-            }
 
-            if (Card.IsCode(_CardId.Number41BagooskatheTerriblyTiredTapir))
-            {
-                bool haveDangerMonster = Enemy.MonsterZone.Any(c => c != null && c.IsFloodgate() && !c.IsDisabled());
-                if (Card.IsDefense())
-                {
-                    return !haveDangerMonster && !Util.IsTurn1OrMain2();
-                } else
-                {
-                    return haveDangerMonster || Util.IsTurn1OrMain2();
-                }
-            }
+            if (Card == null || Card.Location != CardLocation.MonsterZone)
+                return false;
 
-            return false;
+            if (!Bot.HasInMonstersZone(CardId.ExtRyzeal))
+                return false;
+
+            if (HasFieldMonsterBlockingExtSearch())
+                return false;
+
+            return GetExtRyzealSearchTarget() != -1;
         }
 
-        protected override bool DefaultSetForDiabellze()
+        private bool CommitActivateExtRyzealEffect()
         {
-            if (base.DefaultSetForDiabellze())
+            int target = GetExtRyzealSearchTarget();
+            if (target == -1) return false; // 안전장치
+
+            MarkActivateEffectUsedThisTurn(CardId.ExtRyzeal);
+            AI.SelectCard(target);
+            return true;
+        }
+
+        private bool ExtRyzealEffect()
+        {
+            if (!CanActivateExtRyzealEffect()) return false;
+            return CommitActivateExtRyzealEffect();
+        }
+
+        // --- Ext: 엑스트라덱의 Xyz 몬스터 1장을 묘지로 보내고 특수소환 ---
+        private bool CanSpecialSummonExtRyzeal()
+        {
+            if (IsSpecialSummonEffectUsedThisTurn(CardId.ExtRyzeal)) return false;
+            if (!Bot.HasInHand(CardId.ExtRyzeal)) return false;
+
+            return Bot.ExtraDeck.Any(c => c.HasType(CardType.Xyz));
+        }
+
+        private bool CommitSpecialSummonExtRyzeal()
+        {
+            MarkSpecialSummonEffectUsedThisTurn(CardId.ExtRyzeal);
+            // TODO: 엑스트라덱의 여러 Xyz 중 뭘 묻을지 고르는 우선순위 로직 필요 (지금은 엔진 기본선택에 위임)
+            AI.SelectCard(CardLocation.Extra);
+            return true;
+        }
+
+        // --- Star: 필드 몬스터의 Xyz 소재 1개를 제거하고 특수소환 ---
+        private bool CanSpecialSummonStarRyzeal()
+        {
+            if (IsSpecialSummonEffectUsedThisTurn(CardId.StarRyzeal)) return false;
+            if (!Bot.HasInHand(CardId.StarRyzeal)) return false;
+
+            return Bot.GetMonsters().Any(c => c.HasXyzMaterial());
+        }
+
+        private bool CommitSpecialSummonStarRyzeal()
+        {
+            MarkSpecialSummonEffectUsedThisTurn(CardId.StarRyzeal);
+            // TODO: 어느 몬스터의 소재를 뗄지 선택하는 로직 미구현.
+            // Xyz 소재 제거는 OnSelectXyzMaterial() 오버라이드가 필요할 수 있음 - 확인 필요.
+            return true;
+        }
+
+        // AddExecutor가 호출하는 진입점들
+        private bool IceRyzealSpSummon()
+        {
+            if (!CanSpecialSummonIceRyzeal()) return false;
+            return CommitSpecialSummonIceRyzeal();
+        }
+
+        private bool SwordRyzealSpSummon()
+        {
+            if (!CanSpecialSummonSwordRyzeal()) return false;
+            return CommitSpecialSummonSwordRyzeal();
+        }
+
+        private bool NodeRyzealSpSummon()
+        {
+            if (!CanSpecialSummonNodeRyzeal()) return false;
+            return CommitSpecialSummonNodeRyzeal();
+        }
+
+        private bool ExtRyzealSpSummon()
+        {
+            if (!CanSpecialSummonExtRyzeal()) return false;
+            return CommitSpecialSummonExtRyzeal();
+        }
+
+        private bool StarRyzealSpSummon()
+        {
+            if (!CanSpecialSummonStarRyzeal()) return false;
+            return CommitSpecialSummonStarRyzeal();
+        }
+
+        // 순수 조건 판정: 지금 SwordRyzeal 효과로 서치할 대상이 있는지만 계산.
+        // 어느 카드를 고를지의 "우선순위 로직"이지만 AI.SelectCard 호출(부작용)은 없음
+        // -> Can*/Commit* 양쪽에서 이 함수 하나를 공유해서 로직 중복을 피함.
+        private int GetSwordRyzealSearchTarget()
+        {
+            // Sword의 실제 필터는 LIGHT + Pyro.
+            // 현재 덱에서는 PyroMonsters가 곧 Sword의 합법적인 검색 범위다.
+            //
+            // 기존의 Ext 우선 선택은 잘못된 구현이었다.
+            // Ext는 FIRE + Thunder이므로 Sword의 LIGHT + Pyro 효과로 검색할 수 없다.
+
+            foreach (var id in PyroMonsters)
             {
-                SelectSTPlace(Card, true);
-                return true;
+                if (!IsCardAnywhere(id) && Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
+            }
+
+            // 이미 다른 영역에 존재하더라도 덱에 남아 있으면 선택 가능.
+            // 우선순위는 Star -> Ice로 유지한다.
+            foreach (var id in PyroMonsters)
+            {
+                if (Bot.GetRemainingCount(id, 1) > 0)
+                    return id;
+            }
+
+            return -1; // 서치할 대상 없음
+        }
+
+        private bool CanActivateSwordRyzealEffect()
+        {
+            if (IsActivateEffectUsedThisTurn(CardId.SwordRyzeal)) // HOPT: 발동효과 턴당 1번 (룰특수소환과 별개)
+                return false;
+
+            if (Card == null || Card.Location != CardLocation.MonsterZone)
+                return false;
+
+            if (!Bot.HasInMonstersZone(CardId.SwordRyzeal))
+                return false;
+
+            return GetSwordRyzealSearchTarget() != -1;
+        }
+
+        private bool CommitActivateSwordRyzealEffect()
+        {
+            int target = GetSwordRyzealSearchTarget();
+            if (target == -1) return false; // 안전장치: Can*을 안 거치고 호출돼도 잘못된 선언 방지
+
+            MarkActivateEffectUsedThisTurn(CardId.SwordRyzeal);
+            AI.SelectCard(target);
+            return true;
+        }
+
+        private bool SwordRyzealEffect()
+        {
+            if (!CanActivateSwordRyzealEffect()) return false;
+            return CommitActivateSwordRyzealEffect();
+        }
+
+        public override void OnNewTurn()
+        {
+            base.OnNewTurn();
+            NormalSummonUsed = false;
+            _activateEffectUsedThisTurn.Clear();
+            _specialSummonEffectUsedThisTurn.Clear();
+            _iceNormalSummonedThisTurn = false;
+        }
+
+        // *** 정정 필요 (c27204311.lua 확인 결과) ***
+        // 실제 조건: Duel.GetFlagEffect(1-tp,id)>=5 (상대가 이번 턴 5번 이상 소환했는가)
+        // 지금 아래 구현("상대 몬스터 수가 더 많으면")은 완전히 다른(틀린) 조건임.
+        // "이번 턴 상대 소환 횟수" 누적 카운터를 얻을 방법이 WindBot Executor 훅 중엔 없어서
+        // (OnSummonSuccess류 콜백이 Executor.cs에 없음) 정확히 재현 불가능.
+        // 게다가 EFFECT_TYPE_QUICK_O + EVENT_FREE_CHAIN이라 원래 상대 턴 체인 대응 카드라,
+        // 이번 개발 범위(메인페이즈 전개, 2차 목표=상대턴 대응은 보류 중) 밖의 카드임.
+        // AddExecutor 등록은 레거시 경로용으로 남겨두되, GenerateCandidates에서는 제외함.
+        private bool NibiruEffect()
+        {
+            // 단순히 상대 몬스터가 더 많으면 발동
+            return Bot.GetMonsterCount() <= 0 || Bot.GetMonsterCount() < Enemy.GetMonsterCount();
+        }
+
+        // 순수 조건 판정: 지금 CrossoutDesignator로 무효화할 만한 대상이 있는지만 계산.
+        // 부작용(AI.SelectAnnounceID) 없음 -> 후보 스캔 단계에서 몇 번을 호출해도 안전.
+        private int GetCrossOutDesignatorTarget()
+        {
+            if (Duel.LastChainPlayer != 1) return -1;
+
+            ClientCard lastChainCard = Util.GetLastChainCard();
+            if (lastChainCard == null) return -1;
+
+            if (lastChainCard.IsCode(CardId.InfiniteImpermanence)) return CardId.InfiniteImpermanence;
+            if (lastChainCard.IsCode(CardId.AshBlossomAndJoyousSpring)) return CardId.AshBlossomAndJoyousSpring;
+            // 참고: CalledByTheGrave는 CardId에 정의는 돼 있지만 최신 확정 덱리스트(40장)엔
+            // 포함되지 않은 카드라 이 분기는 사실상 항상 미스가 됨. 덱에서 뺀 게 맞다면
+            // 이 줄도 같이 정리하는 게 좋음.
+            if (lastChainCard.IsCode(CardId.CalledByTheGrave)) return CardId.CalledByTheGrave;
+
+            return -1;
+        }
+
+        private bool CanActivateCrossOutDesignator()
+        {
+            return GetCrossOutDesignatorTarget() != -1;
+        }
+
+        private bool CommitActivateCrossOutDesignator()
+        {
+            int target = GetCrossOutDesignatorTarget();
+            if (target == -1) return false; // 안전장치: Can*을 안 거치고 호출돼도 잘못된 선언 방지
+            AI.SelectAnnounceID(target);
+            return true;
+        }
+
+        private bool CrossOutNegate()
+        {
+            if (!CanActivateCrossOutDesignator()) return false;
+            return CommitActivateCrossOutDesignator();
+        }
+
+        private bool CanSpecialSummonTraptrixRafflesia()
+        {
+            return Util.IsTurn1OrMain2() && Bot.GetRemainingCount(CardId.GravediggersTrapHole, 1) > 0;
+        }
+
+        private bool CommitSpecialSummonTraptrixRafflesia()
+        {
+            AI.SelectPosition(CardPosition.FaceUpDefence);
+            return true;
+        }
+
+        private bool TraptrixRafflesiaSummon()
+        {
+            if (!CanSpecialSummonTraptrixRafflesia()) return false;
+            return CommitSpecialSummonTraptrixRafflesia();
+        }
+
+        /// <summary>
+        /// Mulcharmy Purulia는 DefaultExecutor.cs에 참조가 없음(Fuwalos만 있음).
+        /// 효과/사용 방식은 Maxx "C"와 거의 동일(상대 턴이면 항상 발동)하지만,
+        /// 실제 카드 텍스트상 "자신 필드에 카드가 없을 것"을 요구하므로 그 조건만 추가.
+        /// (Fuwalos처럼 턴당 발동 횟수 제한/조건 분기까지는 필요 없음 - 단순화)
+        /// </summary>
+        private bool DefaultMulcharmyPurulia()
+        {
+            if (Duel.Player != 1)
+                return false;
+
+            if (Bot.GetMonsters().Count > 0 || Bot.GetSpells().Count > 0)
+                return false;
+
+            return true;
+        }
+
+        private bool DefaultMulcharmyFuwalos()
+        {
+            return DefaultMulcharmyPurulia();
+        }
+
+        #endregion Utils
+
+
+        #region Candidate Generation / Trace
+
+        // Baseline evaluator only. It is intentionally not a future-state value model.
+        private Dictionary<int, double> GetCurrentPowers()
+        {
+            var state = GameStateAdapter.ToGameState(Bot, Duel, NormalSummonUsed);
+            return CardValueEngine.EvaluateAll(state);
+        }
+
+        private double GetPowerOrZero(Dictionary<int, double> powers, int cardId)
+        {
+            double value;
+            return powers.TryGetValue(cardId, out value) ? value : 0;
+        }
+
+        private readonly DuelDecisionLogger _decisionLogger =
+            new DuelDecisionLogger("logs/ryzeal-mainphase.jsonl");
+
+        private bool TryGetActionIndex(ClientCard card, ActionType type, long description, out int actionIndex)
+        {
+            actionIndex = -1;
+            if (card == null) return false;
+            if (type == ActionType.NormalSummon)
+                actionIndex = GetIdleActionIndex(card, "NormalSummon");
+            else if (type == ActionType.SpecialSummon)
+                actionIndex = GetIdleActionIndex(card, "SpecialSummon");
+            else if (type == ActionType.Activate && card.ActionActivateIndex != null)
+            {
+                int resolvedIndex;
+                if (!card.ActionActivateIndex.TryGetValue(description, out resolvedIndex)) return false;
+                actionIndex = resolvedIndex;
+            }
+            return actionIndex >= 0;
+        }
+
+        private static int GetIdleActionIndex(ClientCard card, string kind)
+        {
+            if (card == null || card.ActionIndex == null) return -1;
+            int slot;
+            switch (kind)
+            {
+                case "NormalSummon": slot = (int)MainPhaseAction.MainAction.Summon; break;
+                case "SpecialSummon": slot = (int)MainPhaseAction.MainAction.SpSummon; break;
+                case "Repos": slot = (int)MainPhaseAction.MainAction.Repos; break;
+                case "SetMonster": slot = (int)MainPhaseAction.MainAction.SetMonster; break;
+                case "SetSpell": slot = (int)MainPhaseAction.MainAction.SetSpell; break;
+                default: return -1;
+            }
+            return slot < card.ActionIndex.Length ? card.ActionIndex[slot] : -1;
+        }
+
+        private bool TryGetActionCard(IList<ClientCard> cards, int cardId, ActionType type, out ClientCard found, out int actionIndex)
+        {
+            found = null; actionIndex = -1;
+            if (cards == null) return false;
+            foreach (ClientCard card in cards)
+                if (card != null && card.Id == cardId && TryGetActionIndex(card, type, -1, out actionIndex))
+                { found = card; return true; }
+            return false;
+        }
+
+        private bool TryGetActivableCard(MainPhase main, int cardId, out ClientCard found, out long description, out int actionIndex)
+        {
+            found = null; description = -1; actionIndex = -1;
+            if (main == null) return false;
+            for (int i = 0; i < main.ActivableCards.Count; i++)
+            {
+                ClientCard card = main.ActivableCards[i];
+                long desc = main.ActivableDescs[i];
+                if (card != null && card.Id == cardId && TryGetActionIndex(card, ActionType.Activate, desc, out actionIndex))
+                { found = card; description = desc; return true; }
             }
             return false;
         }
+
+        private void AddCandidate(List<ActionCandidate> candidates, ActionType type, int cardId, double score,
+            string label, string goalTag, ClientCard source, int actionIndex, long desc, Func<bool> commit, string selectionPlan = "")
+        {
+            candidates.Add(new ActionCandidate {
+                ActionType = type, CardId = cardId, BaselineScore = score, Label = label, GoalTag = goalTag,
+                SelectionPlan = selectionPlan, ActionIndex = actionIndex, ActivationDescription = desc,
+                // Candidate generation must not leave Executor.Card pointing to an arbitrary last-scanned effect.
+                Commit = () => { if (type == ActionType.Activate) SetCard(ExecutorType.Activate, source, desc); return commit(); }
+            });
+        }
+
+        private List<ActionCandidate> GenerateCandidates(MainPhase main)
+        {
+            var result = new List<ActionCandidate>();
+            var powers = GetCurrentPowers();
+            ClientCard card; int index; long desc;
+
+            if (TryGetActionCard(main.SummonableCards, CardId.IceRyzeal, ActionType.NormalSummon, out card, out index) && CanSummonIceRyzeal())
+                AddCandidate(result, ActionType.NormalSummon, CardId.IceRyzeal, GetPowerOrZero(powers, CardId.IceRyzeal), "IceRyzeal normal summon", "BuildRank4Board", card, index, -1, CommitSummonIceRyzeal);
+
+            if (TryGetActivableCard(main, CardId.IceRyzeal, out card, out desc, out index))
+            { SetCard(ExecutorType.Activate, card, desc); if (CanActivateIceRyzealEffect()) AddCandidate(result, ActionType.Activate, CardId.IceRyzeal, GetPowerOrZero(powers, CardId.IceRyzeal), "IceRyzeal summon-from-deck effect", "BuildRank4Board", card, index, desc, CommitActivateIceRyzealEffect); }
+            if (TryGetActivableCard(main, CardId.NodeRyzeal, out card, out desc, out index))
+            { SetCard(ExecutorType.Activate, card, desc); if (CanActivateNodeRyzealEffect()) AddCandidate(result, ActionType.Activate, CardId.NodeRyzeal, GetPowerOrZero(powers, CardId.NodeRyzeal), "NodeRyzeal revive effect", "RecoverResource", card, index, desc, CommitActivateNodeRyzealEffect, GetNodeRyzealSelectionPlan()); }
+            if (TryGetActivableCard(main, CardId.ExtRyzeal, out card, out desc, out index))
+            { SetCard(ExecutorType.Activate, card, desc); if (CanActivateExtRyzealEffect()) AddCandidate(result, ActionType.Activate, CardId.ExtRyzeal, GetPowerOrZero(powers, GetExtRyzealSearchTarget()), "ExtRyzeal search effect", "FindExtender", card, index, desc, CommitActivateExtRyzealEffect); }
+            if (TryGetActivableCard(main, CardId.SwordRyzeal, out card, out desc, out index))
+            { SetCard(ExecutorType.Activate, card, desc); if (CanActivateSwordRyzealEffect()) AddCandidate(result, ActionType.Activate, CardId.SwordRyzeal, GetPowerOrZero(powers, GetSwordRyzealSearchTarget()), "SwordRyzeal search effect", "FindExtender", card, index, desc, CommitActivateSwordRyzealEffect); }
+
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.IceRyzeal, ActionType.SpecialSummon, out card, out index) && CanSpecialSummonIceRyzeal()) AddCandidate(result, ActionType.SpecialSummon, CardId.IceRyzeal, GetPowerOrZero(powers, CardId.IceRyzeal), "IceRyzeal rule special summon", "BuildRank4Board", card, index, -1, CommitSpecialSummonIceRyzeal);
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.SwordRyzeal, ActionType.SpecialSummon, out card, out index) && CanSpecialSummonSwordRyzeal()) AddCandidate(result, ActionType.SpecialSummon, CardId.SwordRyzeal, GetPowerOrZero(powers, CardId.SwordRyzeal), "SwordRyzeal rule special summon", "BuildRank4Board", card, index, -1, CommitSpecialSummonSwordRyzeal);
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.NodeRyzeal, ActionType.SpecialSummon, out card, out index) && CanSpecialSummonNodeRyzeal()) AddCandidate(result, ActionType.SpecialSummon, CardId.NodeRyzeal, GetPowerOrZero(powers, CardId.NodeRyzeal), "NodeRyzeal rule special summon", "RecoverResource", card, index, -1, CommitSpecialSummonNodeRyzeal);
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.ExtRyzeal, ActionType.SpecialSummon, out card, out index) && CanSpecialSummonExtRyzeal()) AddCandidate(result, ActionType.SpecialSummon, CardId.ExtRyzeal, GetPowerOrZero(powers, CardId.ExtRyzeal), "ExtRyzeal rule special summon", "SetUpGraveyard", card, index, -1, CommitSpecialSummonExtRyzeal);
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.StarRyzeal, ActionType.SpecialSummon, out card, out index) && CanSpecialSummonStarRyzeal()) AddCandidate(result, ActionType.SpecialSummon, CardId.StarRyzeal, GetPowerOrZero(powers, CardId.StarRyzeal), "StarRyzeal rule special summon", "BuildRank4Board", card, index, -1, CommitSpecialSummonStarRyzeal);
+            // Engine availability is required; the local material list is only a selection policy.
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.RyzealDetonator, ActionType.SpecialSummon, out card, out index))
+            {
+                var materials = GetDetonatorMaterials();
+                if (materials.Count == 2)
+                    AddCandidate(result, ActionType.SpecialSummon, CardId.RyzealDetonator,
+                        GetPowerOrZero(powers, CardId.RyzealDetonator), "Detonator Xyz summon", "BuildDetonator",
+                        card, index, -1, CommitDetonatorSummon,
+                        "materials:" + String.Join(",", materials.Select(c => c.Id)) + ";count:2");
+            }
+            if (TryGetActionCard(main.SpecialSummonableCards, CardId.RyzealDuoDrive, ActionType.SpecialSummon, out card, out index))
+            {
+                var materials = GetDuoDriveMaterials();
+                if (materials.Count == 2)
+                    AddCandidate(result, ActionType.SpecialSummon, CardId.RyzealDuoDrive,
+                        GetPowerOrZero(powers, CardId.RyzealDuoDrive), "Duo Drive Xyz summon", "BuildDuoDrive",
+                        card, index, -1, CommitDuoDriveSummon,
+                        "materials:" + String.Join(",", materials.Select(c => c.Id)) + ";count:2");
+            }
+            return result;
+        }
+
+        private ClientCard _pendingDetonatorDestroySource;
+
+        private bool DetonatorDestroyEffect()
+        {
+            if (Card == null || Card.Id != CardId.RyzealDetonator ||
+                Card.Location != CardLocation.MonsterZone ||
+                ActivateDescription != Util.GetStringId(CardId.RyzealDetonator, 0)) return false;
+            // Engine supplies legal opponent-chain activation; do not invent an HOPT here.
+            // Avoid activating when only our own field could be destroyed.
+            if (Enemy.GetMonsters().Count + Enemy.GetSpells().Count == 0) return false;
+            _pendingDetonatorDestroySource = Card;
+            return true;
+        }
+
+        public override void OnChainEnd()
+        {
+            _pendingDetonatorDestroySource = null;
+            base.OnChainEnd();
+        }
+
+        private bool DetonatorAttachEffect()
+        {
+            if (Card == null || Card.Id != CardId.RyzealDetonator ||
+                Card.Location != CardLocation.MonsterZone) return false;
+            // aux.Stringid(id,1): attach. Description 0 is the destruction response.
+            // Engine handles count limit and attachfilter legality. Do not consume an ignition HOPT.
+            return ActivateDescription == Util.GetStringId(CardId.RyzealDetonator, 1);
+        }
+
+        private static int DuoDriveSearchPriority(int id)
+        {
+            int[] priority = { CardId.ExtRyzeal, CardId.SwordRyzeal, CardId.IceRyzeal,
+                CardId.NodeRyzeal, CardId.StarRyzeal };
+            int index = Array.IndexOf(priority, id);
+            return index < 0 ? priority.Length : index;
+        }
+
+        private bool DuoDriveSearchEffect()
+        {
+            // Only called for an engine-offered activation, which checks materials and searchability.
+            return Card != null && Card.Id == CardId.RyzealDuoDrive &&
+                Card.Location == CardLocation.MonsterZone &&
+                ActivateDescription == Util.GetStringId(CardId.RyzealDuoDrive, 1);
+        }
+
+        private bool DuoDriveAttachEffect()
+        {
+            if (Card == null || Card.Id != CardId.RyzealDuoDrive ||
+                Card.Location != CardLocation.MonsterZone) return false;
+            // c7511613.lua: description 0 = attach, description 1 = search.
+            // The engine enforces the separate count limit and eligible graveyard targets.
+            return ActivateDescription == Util.GetStringId(CardId.RyzealDuoDrive, 0);
+        }
+
+        private List<ClientCard> GetDuoDriveMaterials()
+        {
+            // Unlike Detonator, Duo Drive allows ANY Level 4 monsters.
+            // Preserve an unused Node, then prefer spent Ryzeal effects.
+            return Bot.GetMonsters()
+                .Where(c => c.IsFaceup() && c.Level == 4)
+                .OrderBy(c => c.Id == CardId.NodeRyzeal && !IsActivateEffectUsedThisTurn(c.Id) ? 1 : 0)
+                .ThenByDescending(c => IsActivateEffectUsedThisTurn(c.Id))
+                .ThenBy(c => c.Id).Take(2).ToList();
+        }
+
+        private bool CommitDuoDriveSummon()
+        {
+            var materials = GetDuoDriveMaterials();
+            if (materials.Count != 2) return false;
+            AI.SelectMaterials(materials);
+            return true;
+        }
+
+        // Step 03: summon only. Trigger attachment and interruption are separate next steps.
+        private List<ClientCard> GetDetonatorMaterials()
+        {
+            return Bot.GetMonsters()
+                .Where(c => c.IsFaceup() && c.Level == 4 && IsRyzealMonster(c.Id))
+                // Prefer bodies whose ignition/search effects are already spent.
+                .OrderByDescending(c => IsActivateEffectUsedThisTurn(c.Id))
+                .ThenBy(c => c.Id == CardId.NodeRyzeal ? 1 : 0)
+                .ThenBy(c => c.Id)
+                .Take(2).ToList();
+        }
+
+        private bool CommitDetonatorSummon()
+        {
+            var materials = GetDetonatorMaterials();
+            if (materials.Count != 2) return false;
+            AI.SelectMaterials(materials);
+            return true;
+        }
+
+        private DecisionTrace BuildTrace(MainPhase main, List<ActionCandidate> candidates)
+        {
+            var t = new DecisionTrace { Turn = Duel.Turn, Phase = Duel.Phase.ToString(), TurnPlayer = Duel.Player, IsFirst = Duel.IsFirst, NormalSummonUsed = NormalSummonUsed };
+            CopyField(Bot, t.Self); CopyField(Enemy, t.Opponent);
+            AddLegal(t, main.SummonableCards, "NormalSummon", -1); AddLegal(t, main.SpecialSummonableCards, "SpecialSummon", -1);
+            // Logging must never make a legal engine action crash the duel. Some effects can be
+            // exposed without an ActionActivateIndex entry, so record -1 when the index is absent.
+            for (int i = 0; i < main.ActivableCards.Count; i++)
+            {
+                ClientCard card = main.ActivableCards[i];
+                long desc = main.ActivableDescs[i];
+                int actionIndex = -1;
+                if (card != null && card.ActionActivateIndex != null)
+                {
+                    int resolvedIndex;
+                    if (card.ActionActivateIndex.TryGetValue(desc, out resolvedIndex))
+                        actionIndex = resolvedIndex;
+                }
+                t.LegalActions.Add(new LegalActionTrace
+                {
+                    Kind = "Activate",
+                    CardId = card == null ? 0 : card.Id,
+                    ActivationDescription = desc,
+                    ActionIndex = actionIndex
+                });
+            }
+            AddAdditionalLegal(t, main.MonsterSetableCards, "SetMonster");
+            AddAdditionalLegal(t, main.SpellSetableCards, "SetSpell");
+            AddAdditionalLegal(t, main.ReposableCards, "Repos");
+            if (main.CanBattlePhase) t.LegalActions.Add(new LegalActionTrace { Kind = "ToBattlePhase", ActionIndex = -1, ActivationDescription = -1 });
+            if (main.CanEndPhase) t.LegalActions.Add(new LegalActionTrace { Kind = "ToEndPhase", ActionIndex = -1, ActivationDescription = -1 });
+            foreach (var c in candidates) t.PolicyCandidates.Add(ToTrace(c));
+            return t;
+        }
+        private static void AddAdditionalLegal(DecisionTrace trace, IList<ClientCard> cards, string kind)
+        {
+            foreach (var card in cards)
+                if (card != null) trace.LegalActions.Add(new LegalActionTrace
+                    { Kind = kind, CardId = card.Id, ActionIndex = GetIdleActionIndex(card, kind), ActivationDescription = -1 });
+        }
+        private static void CopyField(ClientField source, FieldTrace target) { target.Hand = source.Hand.Select(c => c.Id).ToList(); target.Monsters = source.GetMonsters().Select(c => c.Id).ToList(); target.Spells = source.GetSpells().Select(c => c.Id).ToList(); target.Graveyard = source.Graveyard.Select(c => c.Id).ToList(); target.Banished = source.Banished.Select(c => c.Id).ToList(); target.Extra = source.ExtraDeck.Select(c => c.Id).ToList(); }
+        private static void AddLegal(DecisionTrace t, IList<ClientCard> cards, string kind, long desc) { foreach (var c in cards) t.LegalActions.Add(new LegalActionTrace { Kind = kind, CardId = c.Id, ActivationDescription = desc, ActionIndex = GetIdleActionIndex(c, kind) }); }
+        private static CandidateTrace ToTrace(ActionCandidate c) { return new CandidateTrace { Kind = c.ActionType.ToString(), CardId = c.CardId, BaselineScore = c.BaselineScore, Label = c.Label, GoalTag = c.GoalTag, SelectionPlan = c.SelectionPlan }; }
+
+        public void ObserveDuelStart()
+        {
+            _decisionLogger.BeginDuel();
+            _pendingDetonatorDestroySource = null;
+        }
+
+        public void ObserveLegacyMainPhaseAction(string kind, int cardId, long description)
+        {
+            _decisionLogger.WriteLegacyAction(Duel.Turn, Duel.Phase.ToString(), kind, cardId, description);
+        }
+
+        public override bool TryGetMainPhaseAction(MainPhase main, out MainPhaseAction action)
+        {
+            action = null;
+            _decisionLogger.BeginDecision();
+            var candidates = GenerateCandidates(main);
+            var trace = BuildTrace(main, candidates);
+            foreach (var c in candidates.OrderByDescending(x => x.BaselineScore).ThenBy(x => x.Label, StringComparer.Ordinal))
+            {
+                if (!c.Commit()) continue;
+                trace.Selected = ToTrace(c); trace.SelectionResult = "committed"; _decisionLogger.Write(trace);
+                MainPhaseAction.MainAction kind = c.ActionType == ActionType.NormalSummon ? MainPhaseAction.MainAction.Summon : c.ActionType == ActionType.SpecialSummon ? MainPhaseAction.MainAction.SpSummon : MainPhaseAction.MainAction.Activate;
+                action = new MainPhaseAction(kind, c.ActionIndex); return true;
+            }
+            trace.SelectionResult = candidates.Count == 0 ? "no-policy-candidate; legacy-executor-fallback" : "all-commits-failed; legacy-executor-fallback";
+            _decisionLogger.Write(trace); return false;
+        }
+        #endregion Candidate Generation / Trace
     }
 }

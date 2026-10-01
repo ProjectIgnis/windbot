@@ -56,6 +56,7 @@
     <Compile Include="Game\AI\Enums\*.cs" />
     <Compile Include="Game\AI\Executor.cs" />
     <Compile Include="Game\AI\HintMsg.cs" />
+    <Compile Include="Game\AI\IMainPhaseDecisionObserver.cs" />
     <Compile Include="Game\AI\Opcodes.cs" />
     <Compile Include="Game\AI\ExecutorType.cs" />
     <Compile Include="Game\AI\Zones.cs" />

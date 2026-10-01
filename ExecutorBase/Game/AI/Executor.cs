@@ -256,6 +256,12 @@ namespace WindBot.Game.AI
             return false;
         }
 
+        public virtual bool TryGetMainPhaseAction(MainPhase main, out MainPhaseAction action)
+        {
+            action = null;
+            return false;
+        }
+
         /// <summary>
         /// Called when bot is going to annouce a card
         /// </summary>
