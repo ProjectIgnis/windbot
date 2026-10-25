@@ -415,7 +415,7 @@ namespace WindBot.Game.AI.Decks
                 resolvingRank10Summon = false;
                 rank10MaterialPlan.Clear();
             }
-            if (hint == 527 && cards.Any(c => c != null && c.Location == CardLocation.Deck && (c.IsCode(CardId.DivineAbyssOfTheSacredBeast) || c.IsCode(CardId.FallenParadiseOfTheSacredBeasts) || c.IsCode(CardId.SkyfireOfTheSacredBeast))))
+            if (hint == 527 && min <= 1 && max == 1 && cards.Any(c => c != null && c.Location == CardLocation.Deck && (c.IsCode(CardId.DivineAbyssOfTheSacredBeast) || c.IsCode(CardId.FallenParadiseOfTheSacredBeasts) || c.IsCode(CardId.SkyfireOfTheSacredBeast))))
             {
                 int target = 0;
 
